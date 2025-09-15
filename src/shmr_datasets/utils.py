@@ -1,0 +1,454 @@
+"""
+Utility functions for SHMR calculations and manipulations.
+
+This module provides functions for calculating SHMR from parametric forms,
+interpolating between data points, and performing common transformations.
+"""
+
+import numpy as np
+from scipy import interpolate
+from typing import Union, Callable, Optional, Tuple, Dict, Any
+from dataclasses import dataclass
+
+from .data_format import SHMRData, SHMRMetadata
+
+
+def calculate_shmr(
+    halo_masses: np.ndarray,
+    shmr_function: Union[str, Callable],
+    parameters: Dict[str, float],
+    **kwargs
+) -> SHMRData:
+    """
+    Calculate SHMR from a parametric function.
+    
+    Parameters:
+    -----------
+    halo_masses : array_like
+        Array of halo masses to evaluate SHMR at
+    shmr_function : str or callable
+        Either a string specifying a known SHMR form or a custom function
+    parameters : dict
+        Parameters for the SHMR function
+    **kwargs
+        Additional metadata fields
+        
+    Returns:
+    --------
+    SHMRData
+        Calculated SHMR data with metadata
+    """
+    halo_masses = np.asarray(halo_masses)
+    
+    if isinstance(shmr_function, str):
+        if shmr_function == "behroozi2013":
+            stellar_masses = behroozi2013_shmr(halo_masses, **parameters)
+        elif shmr_function == "moster2013":
+            stellar_masses = moster2013_shmr(halo_masses, **parameters)
+        elif shmr_function == "rodriguez_puebla2017":
+            stellar_masses = rodriguez_puebla2017_shmr(halo_masses, **parameters)
+        elif shmr_function == "double_powerlaw":
+            stellar_masses = double_powerlaw_shmr(halo_masses, **parameters)
+        else:
+            raise ValueError(f"Unknown SHMR function: {shmr_function}")
+    else:
+        stellar_masses = shmr_function(halo_masses, **parameters)
+    
+    # Create metadata
+    metadata_dict = {
+        "name": kwargs.get("name", f"Calculated SHMR ({shmr_function})"),
+        "version": kwargs.get("version", "1.0"),
+        "description": kwargs.get("description", f"SHMR calculated using {shmr_function} parametrization"),
+        "source_type": "theory",
+        "reference": kwargs.get("reference", ""),
+        "creation_method": "calculation",
+        "creation_date": kwargs.get("creation_date", ""),
+        "created_by": kwargs.get("created_by", ""),
+    }
+    
+    # Add any additional metadata
+    for key, value in kwargs.items():
+        if key not in metadata_dict:
+            metadata_dict[key] = value
+    
+    metadata = SHMRMetadata(**metadata_dict)
+    
+    return SHMRData(
+        halo_mass=halo_masses,
+        stellar_mass=stellar_masses,
+        metadata=metadata
+    )
+
+
+def interpolate_shmr(
+    shmr_data: SHMRData,
+    new_halo_masses: np.ndarray,
+    method: str = "linear",
+    extrapolate: bool = False
+) -> SHMRData:
+    """
+    Interpolate SHMR to new halo mass points.
+    
+    Parameters:
+    -----------
+    shmr_data : SHMRData
+        Original SHMR data
+    new_halo_masses : array_like
+        New halo masses to interpolate to
+    method : str
+        Interpolation method ("linear", "cubic", "log-linear")
+    extrapolate : bool
+        Whether to allow extrapolation beyond original data range
+        
+    Returns:
+    --------
+    SHMRData
+        Interpolated SHMR data
+    """
+    new_halo_masses = np.asarray(new_halo_masses)
+    
+    if method == "log-linear":
+        # Interpolate in log space
+        log_halo = np.log10(shmr_data.halo_mass)
+        log_stellar = np.log10(shmr_data.stellar_mass)
+        log_new_halo = np.log10(new_halo_masses)
+        
+        interp_func = interpolate.interp1d(
+            log_halo, log_stellar, 
+            kind="linear",
+            bounds_error=not extrapolate,
+            fill_value="extrapolate" if extrapolate else np.nan
+        )
+        
+        new_stellar_masses = 10**interp_func(log_new_halo)
+        
+    else:
+        interp_func = interpolate.interp1d(
+            shmr_data.halo_mass, shmr_data.stellar_mass,
+            kind=method,
+            bounds_error=not extrapolate,
+            fill_value="extrapolate" if extrapolate else np.nan
+        )
+        
+        new_stellar_masses = interp_func(new_halo_masses)
+    
+    # Create new metadata
+    new_metadata = SHMRMetadata(**{
+        **shmr_data.metadata.__dict__,
+        "name": f"{shmr_data.metadata.name} (interpolated)",
+        "description": f"{shmr_data.metadata.description} - Interpolated using {method} method",
+        "creation_method": "interpolation"
+    })
+    
+    return SHMRData(
+        halo_mass=new_halo_masses,
+        stellar_mass=new_stellar_masses,
+        metadata=new_metadata
+    )
+
+
+def behroozi2013_shmr(
+    halo_mass: np.ndarray,
+    log_m1: float = 12.35,
+    ms0: float = 10.72,
+    beta: float = 0.44,
+    delta: float = 0.57,
+    gamma: float = 1.56
+) -> np.ndarray:
+    """
+    Calculate SHMR using Behroozi+ 2013 parametrization.
+    
+    Parameters:
+    -----------
+    halo_mass : array_like
+        Halo masses in solar masses
+    log_m1 : float
+        Characteristic halo mass (log10)
+    ms0 : float
+        Normalization (log10 stellar mass)
+    beta : float
+        Low-mass slope
+    delta : float
+        High-mass slope
+    gamma : float
+        Turnover sharpness
+        
+    Returns:
+    --------
+    np.ndarray
+        Stellar masses in solar masses
+    """
+    log_mh = np.log10(halo_mass)
+    x = log_mh - log_m1
+    
+    f = -np.log10(10**(beta * x) + 1) + delta * (np.log10(1 + np.exp(x)))**gamma / (1 + np.exp(10**(-x)))
+    
+    log_ms = ms0 + f
+    return 10**log_ms
+
+
+def moster2013_shmr(
+    halo_mass: np.ndarray,
+    m1: float = 1.87e12,
+    n10: float = 0.0351,
+    beta: float = 1.376,
+    gamma: float = 0.608
+) -> np.ndarray:
+    """
+    Calculate SHMR using Moster+ 2013 parametrization.
+    
+    Parameters:
+    -----------
+    halo_mass : array_like
+        Halo masses in solar masses
+    m1 : float
+        Characteristic halo mass
+    n10 : float
+        Normalization
+    beta : float
+        Low-mass slope
+    gamma : float
+        High-mass slope
+        
+    Returns:
+    --------
+    np.ndarray
+        Stellar masses in solar masses
+    """
+    x = halo_mass / m1
+    efficiency = 2 * n10 / (x**(-beta) + x**gamma)
+    return efficiency * halo_mass
+
+
+def rodriguez_puebla2017_shmr(
+    halo_mass: np.ndarray,
+    log_m1: float = 12.52,
+    log_eps: float = -1.777,
+    alpha: float = 2.133,
+    beta: float = 0.484,
+    gamma: float = 1.077
+) -> np.ndarray:
+    """
+    Calculate SHMR using Rodriguez-Puebla+ 2017 parametrization.
+    
+    Parameters:
+    -----------
+    halo_mass : array_like
+        Halo masses in solar masses
+    log_m1 : float
+        Characteristic halo mass (log10)
+    log_eps : float
+        Peak efficiency (log10)
+    alpha : float
+        Low-mass slope
+    beta : float
+        High-mass slope  
+    gamma : float
+        Turnover sharpness
+        
+    Returns:
+    --------
+    np.ndarray
+        Stellar masses in solar masses
+    """
+    log_mh = np.log10(halo_mass)
+    x = log_mh - log_m1
+    
+    log_eps_eff = log_eps - 0.5 * ((x/gamma)**2) / (1 + (x/gamma)**2)
+    f = (x**alpha) / (1 + x**beta)
+    
+    log_ms = log_mh + log_eps_eff + f
+    return 10**log_ms
+
+
+def double_powerlaw_shmr(
+    halo_mass: np.ndarray,
+    ms_norm: float = 1e10,
+    mh_norm: float = 1e12,
+    alpha_low: float = 1.0,
+    alpha_high: float = -0.5
+) -> np.ndarray:
+    """
+    Calculate SHMR using a simple double power law.
+    
+    Parameters:
+    -----------
+    halo_mass : array_like
+        Halo masses in solar masses
+    ms_norm : float
+        Stellar mass normalization
+    mh_norm : float
+        Halo mass normalization
+    alpha_low : float
+        Power law index for low masses
+    alpha_high : float
+        Power law index for high masses
+        
+    Returns:
+    --------
+    np.ndarray
+        Stellar masses in solar masses
+    """
+    x = halo_mass / mh_norm
+    
+    stellar_mass = np.zeros_like(halo_mass)
+    
+    low_mask = halo_mass < mh_norm
+    high_mask = halo_mass >= mh_norm
+    
+    stellar_mass[low_mask] = ms_norm * (x[low_mask]**alpha_low)
+    stellar_mass[high_mask] = ms_norm * (x[high_mask]**alpha_high)
+    
+    return stellar_mass
+
+
+def scatter_relation(
+    base_stellar_mass: np.ndarray,
+    scatter_model: str = "lognormal",
+    sigma: float = 0.15,
+    seed: Optional[int] = None
+) -> np.ndarray:
+    """
+    Add scatter to a stellar mass relation.
+    
+    Parameters:
+    -----------
+    base_stellar_mass : array_like
+        Base stellar masses without scatter
+    scatter_model : str
+        Type of scatter ("lognormal", "gaussian")
+    sigma : float
+        Scatter amplitude (dex for lognormal)
+    seed : int, optional
+        Random seed for reproducibility
+        
+    Returns:
+    --------
+    np.ndarray
+        Stellar masses with scatter
+    """
+    if seed is not None:
+        np.random.seed(seed)
+    
+    base_stellar_mass = np.asarray(base_stellar_mass)
+    
+    if scatter_model == "lognormal":
+        log_ms = np.log10(base_stellar_mass)
+        scattered_log_ms = log_ms + np.random.normal(0, sigma, size=log_ms.shape)
+        return 10**scattered_log_ms
+    elif scatter_model == "gaussian":
+        return base_stellar_mass + np.random.normal(0, sigma, size=base_stellar_mass.shape)
+    else:
+        raise ValueError(f"Unknown scatter model: {scatter_model}")
+
+
+def convert_units(
+    masses: np.ndarray,
+    input_units: str,
+    output_units: str,
+    h: float = 0.7
+) -> np.ndarray:
+    """
+    Convert mass units.
+    
+    Parameters:
+    -----------
+    masses : array_like
+        Input masses
+    input_units : str
+        Input units ("Msun", "Msun/h", "kg")
+    output_units : str  
+        Output units ("Msun", "Msun/h", "kg")
+    h : float
+        Hubble parameter (for h-dependent conversions)
+        
+    Returns:
+    --------
+    np.ndarray
+        Converted masses
+    """
+    masses = np.asarray(masses)
+    
+    # Convert to solar masses first
+    if input_units == "Msun/h":
+        masses_msun = masses / h
+    elif input_units == "kg":
+        masses_msun = masses / 1.989e30  # kg to solar masses
+    elif input_units == "Msun":
+        masses_msun = masses
+    else:
+        raise ValueError(f"Unknown input units: {input_units}")
+    
+    # Convert from solar masses to output units
+    if output_units == "Msun/h":
+        return masses_msun * h
+    elif output_units == "kg":
+        return masses_msun * 1.989e30
+    elif output_units == "Msun":
+        return masses_msun
+    else:
+        raise ValueError(f"Unknown output units: {output_units}")
+
+
+def calculate_stellar_mass_function(
+    shmr_data: SHMRData,
+    halo_mass_function: Callable,
+    log_mass_bins: np.ndarray
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Calculate stellar mass function from SHMR and halo mass function.
+    
+    Parameters:
+    -----------
+    shmr_data : SHMRData
+        SHMR data
+    halo_mass_function : callable
+        Function that takes halo mass and returns dn/dlog(Mh)
+    log_mass_bins : array_like
+        Stellar mass bins (log10)
+        
+    Returns:
+    --------
+    tuple
+        (stellar_mass_centers, number_density)
+    """
+    # Create interpolation function for SHMR
+    shmr_interp = interpolate.interp1d(
+        np.log10(shmr_data.halo_mass),
+        np.log10(shmr_data.stellar_mass),
+        kind='linear',
+        bounds_error=False,
+        fill_value=np.nan
+    )
+    
+    # Calculate stellar mass function
+    mass_centers = (log_mass_bins[:-1] + log_mass_bins[1:]) / 2
+    number_density = np.zeros_like(mass_centers)
+    
+    # For each stellar mass bin, find corresponding halo masses
+    for i, log_ms in enumerate(mass_centers):
+        # Find halo masses that map to this stellar mass
+        # This is a simplified approach - more sophisticated methods exist
+        log_mh_range = np.linspace(10, 16, 1000)
+        log_ms_pred = shmr_interp(log_mh_range)
+        
+        # Find halo masses within this stellar mass bin
+        mask = ((log_ms_pred >= log_mass_bins[i]) & 
+                (log_ms_pred < log_mass_bins[i+1]) &
+                (~np.isnan(log_ms_pred)))
+        
+        if np.any(mask):
+            mh_values = 10**log_mh_range[mask]
+            hmf_values = halo_mass_function(mh_values)
+            
+            # Jacobian for transformation
+            dlogms_dlogmh = np.gradient(log_ms_pred[mask])
+            valid_jac = dlogms_dlogmh > 0
+            
+            if np.any(valid_jac):
+                number_density[i] = np.trapz(
+                    hmf_values[valid_jac] / dlogms_dlogmh[valid_jac],
+                    log_mh_range[mask][valid_jac]
+                )
+    
+    return 10**mass_centers, number_density
