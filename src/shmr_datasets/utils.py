@@ -70,7 +70,9 @@ def calculate_shmr(
     halo_masses = np.asarray(halo_masses)
     
     if isinstance(shmr_function, str):
-        if shmr_function == "behroozi2013":
+        if shmr_function == "behroozi2010":
+            stellar_masses = behroozi2010_shmr(halo_masses, **parameters)
+        elif shmr_function == "behroozi2013":
             stellar_masses = behroozi2013_shmr(halo_masses, **parameters)
         elif shmr_function == "moster2013":
             stellar_masses = moster2013_shmr(halo_masses, **parameters)
@@ -224,6 +226,62 @@ def interpolate_shmr(
         label=f"{shmr_data.label}_interpolated",
         reference=f"{shmr_data.reference} (interpolated using {method} method)"
     )
+
+
+def behroozi2010_shmr(
+    halo_mass: np.ndarray,
+    log_m1: float = 11.88,
+    ms0: float = 10.21,
+    beta: float = 0.48,
+    delta: float = 0.15,
+    gamma: float = 2.51
+) -> np.ndarray:
+    """
+    Calculate SHMR using Behroozi+ 2010 parametrization.
+    
+    From Behroozi et al. 2010 (arXiv:1001.0015), Equation 2.
+    This is an earlier version of the abundance matching relation.
+    
+    Parameters
+    ----------
+    halo_mass : array_like
+        Halo masses in solar masses
+    log_m1 : float
+        Characteristic halo mass (log10), default for z=0
+    ms0 : float  
+        Normalization (log10 stellar mass), default for z=0
+    beta : float
+        Low-mass slope, default for z=0
+    delta : float
+        High-mass slope, default for z=0
+    gamma : float
+        Turnover sharpness, default for z=0
+        
+    Returns
+    -------
+    np.ndarray
+        Stellar masses in solar masses
+        
+    Notes
+    -----
+    Default parameters are for z=0 from Behroozi+ 2010.
+    The form is: log(M*/M☉) = log(ε*M1) + f(log(M_h/M1)) - f(0)
+    where f(x) = -log10(10^(-α*x) + 1) + δ*(log10(1+exp(x)))^γ / (1+exp(10^(-x)))
+    and α = β, ε = 10^(ms0)/M1.
+    """
+    log_mh = np.log10(halo_mass)
+    x = log_mh - log_m1
+    
+    # Using the form from Behroozi+ 2010, Eq. 2
+    # f(x) = -log10(10^(-α*x) + 1) + δ*(log10(1+exp(x)))^γ / (1+exp(10^(-x)))
+    alpha = beta  # In 2010 paper, α = β
+    f_x = -np.log10(10**(-alpha * x) + 1) + delta * (np.log10(1 + np.exp(x)))**gamma / (1 + np.exp(10**(-x)))
+    f_0 = -np.log10(10**(0) + 1) + delta * (np.log10(1 + np.exp(0)))**gamma / (1 + np.exp(10**(0)))
+    
+    # log(M*/M☉) = log(ε*M1) + f(log(M_h/M1)) - f(0)
+    # where ε = 10^(ms0)/M1, so log(ε*M1) = ms0  
+    log_ms = ms0 + f_x - f_0
+    return 10**log_ms
 
 
 def behroozi2013_shmr(

@@ -132,7 +132,8 @@ See the [notebooks/](notebooks/) directory for detailed examples:
 
 The package includes implementations of several common SHMR parametrizations:
 
-- **Behroozi et al. 2013**: Abundance matching relation
+- **Behroozi et al. 2010**: Original abundance matching relation (arXiv:1001.0015)
+- **Behroozi et al. 2013**: Updated abundance matching relation
 - **Moster et al. 2013**: Alternative abundance matching form  
 - **Rodriguez-Puebla et al. 2017**: Updated abundance matching
 - **Double Power Law**: Simple parametric form
@@ -142,8 +143,10 @@ The package includes implementations of several common SHMR parametrizations:
 
 The repository includes validated example datasets:
 
+- **Behroozi et al. 2010**: `data/theory/behroozi2010/behroozi2010_parametric.h5` (parametric model)
 - **Behroozi et al. 2013**: `data/theory/behroozi2013/behroozi2013_z0_galacticus.h5`
 - **Moster et al. 2013**: `data/theory/moster2013/moster2013_z0_galacticus.h5`
+- **UniverseMachine**: `data/simulations/universemachine/universemachine_downloaded.h5` (downloaded data)
 
 All datasets pass Galacticus format validation and can be used directly in simulations.
 
