@@ -18,6 +18,69 @@ from .data_format import (
 )
 
 
+def propagate_parameter_uncertainties(
+    halo_masses: np.ndarray,
+    shmr_function: Union[str, Callable],
+    parameters: Dict[str, float],
+    parameter_errors: Dict[str, float],
+    n_samples: int = 100
+) -> np.ndarray:
+    """
+    Estimate stellar mass uncertainties by propagating parameter uncertainties.
+    
+    Parameters
+    ----------
+    halo_masses : array_like
+        Array of halo masses
+    shmr_function : str or callable  
+        SHMR function name or callable
+    parameters : dict
+        Best-fit parameter values
+    parameter_errors : dict
+        1-sigma uncertainties on parameters
+    n_samples : int
+        Number of Monte Carlo samples for uncertainty propagation
+        
+    Returns
+    -------
+    np.ndarray
+        Standard deviation of stellar masses from parameter uncertainties
+    """
+    stellar_masses_samples = []
+    
+    for _ in range(n_samples):
+        # Sample parameters from Gaussian distributions
+        sampled_params = {}
+        for param, value in parameters.items():
+            if param in parameter_errors:
+                sampled_params[param] = np.random.normal(value, parameter_errors[param])
+            else:
+                sampled_params[param] = value
+        
+        # Calculate stellar masses with sampled parameters
+        if isinstance(shmr_function, str):
+            if shmr_function == "behroozi2010":
+                stellar_masses = behroozi2010_shmr(halo_masses, **sampled_params)
+            elif shmr_function == "behroozi2013":
+                stellar_masses = behroozi2013_shmr(halo_masses, **sampled_params)
+            elif shmr_function == "moster2013":
+                stellar_masses = moster2013_shmr(halo_masses, **sampled_params)
+            elif shmr_function == "rodriguez_puebla2017":
+                stellar_masses = rodriguez_puebla2017_shmr(halo_masses, **sampled_params)
+            elif shmr_function == "double_powerlaw":
+                stellar_masses = double_powerlaw_shmr(halo_masses, **sampled_params)
+            else:
+                raise ValueError(f"Unknown SHMR function: {shmr_function}")
+        else:
+            stellar_masses = shmr_function(halo_masses, **sampled_params)
+            
+        stellar_masses_samples.append(stellar_masses)
+    
+    # Calculate standard deviation across samples
+    stellar_masses_array = np.array(stellar_masses_samples)
+    return np.std(stellar_masses_array, axis=0)
+
+
 def calculate_shmr(
     halo_masses: np.ndarray,
     shmr_function: Union[str, Callable],
@@ -25,6 +88,7 @@ def calculate_shmr(
     redshift_width: float = 0.1,
     cosmology: Optional[GalacticusCosmology] = None,
     parameters: Optional[Dict[str, float]] = None,
+    parameter_errors: Optional[Dict[str, float]] = None,
     halo_mass_definition: str = "virial",
     label: str = "SHMR",
     reference: str = "Generated SHMR",
@@ -41,8 +105,11 @@ def calculate_shmr(
         Array of halo masses to evaluate SHMR at (in M☉)
     shmr_function : str or callable
         Either a string specifying a known SHMR form or a custom function
-    parameters : dict
+    parameters : dict, optional
         Parameters for the SHMR function
+    parameter_errors : dict, optional
+        1-sigma uncertainties on the parameters. If provided, these will be
+        used to estimate stellar mass uncertainties via Monte Carlo sampling
     redshift : float, optional
         Central redshift for the relation (default: 0.0)
     redshift_width : float, optional
@@ -57,8 +124,12 @@ def calculate_shmr(
         Reference for the relation (default: "Generated SHMR")
     scatter : array_like, optional
         Intrinsic scatter in log stellar mass in dex (default: 0.16 dex)
-    stellar_mass_errors : array_like, optional
-        Observational errors in stellar mass (default: 10%)
+    stellar_mass_errors : array_like or float, optional
+        Observational errors in stellar mass. Can be:
+        - Array of errors in M☉ (same length as halo_masses)
+        - Single float < 1: treated as fractional error (e.g., 0.1 = 10%)
+        - Single float > 1: treated as absolute error in M☉
+        - None: defaults to 10% fractional error
     **kwargs
         Additional parameters passed to SHMR function
         
@@ -101,11 +172,30 @@ def calculate_shmr(
             scatter = np.full(len(halo_masses), scatter.item() if scatter.size == 1 else scatter)
     
     if stellar_mass_errors is None:
-        stellar_mass_errors = np.full(len(halo_masses), 0.1)  # 0.1 dex default error
+        # Try to use parameter uncertainties if available
+        if parameter_errors is not None and parameters is not None:
+            print("Using parameter uncertainty propagation for stellar mass errors...")
+            stellar_mass_errors = propagate_parameter_uncertainties(
+                halo_masses, shmr_function, parameters, parameter_errors
+            )
+        else:
+            # Default: 10% fractional error in M☉ (not dex!)
+            stellar_mass_errors = 0.1 * stellar_masses  # 10% fractional uncertainty
     else:
         stellar_mass_errors = np.asarray(stellar_mass_errors)
         if stellar_mass_errors.shape != halo_masses.shape:
-            stellar_mass_errors = np.full(len(halo_masses), stellar_mass_errors.item() if stellar_mass_errors.size == 1 else stellar_mass_errors)
+            # Single value provided
+            if stellar_mass_errors.size == 1:
+                error_value = stellar_mass_errors.item()
+                if error_value < 1.0:
+                    # Treat as fractional error (e.g., 0.1 = 10%)
+                    stellar_mass_errors = error_value * stellar_masses
+                else:
+                    # Treat as absolute error in M☉
+                    stellar_mass_errors = np.full(len(halo_masses), error_value)
+            else:
+                # Array with wrong shape - use first value as fractional
+                stellar_mass_errors = stellar_mass_errors[0] * stellar_masses
     
     # Default scatter errors (typically much smaller)
     scatter_errors = np.full(len(halo_masses), 0.04)  # 0.04 dex scatter error
