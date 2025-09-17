@@ -21,10 +21,10 @@ from .data_format import (
 def calculate_shmr(
     halo_masses: np.ndarray,
     shmr_function: Union[str, Callable],
-    parameters: Dict[str, float],
     redshift: float = 0.0,
     redshift_width: float = 0.1,
     cosmology: Optional[GalacticusCosmology] = None,
+    parameters: Optional[Dict[str, float]] = None,
     halo_mass_definition: str = "virial",
     label: str = "SHMR",
     reference: str = "Generated SHMR",
@@ -56,9 +56,9 @@ def calculate_shmr(
     reference : str, optional
         Reference for the relation (default: "Generated SHMR")
     scatter : array_like, optional
-        Intrinsic scatter in stellar mass in dex (default: 0.3 dex)
+        Intrinsic scatter in log stellar mass in dex (default: 0.16 dex)
     stellar_mass_errors : array_like, optional
-        Observational errors in stellar mass (default: 0.1 dex)
+        Observational errors in stellar mass (default: 10%)
     **kwargs
         Additional parameters passed to SHMR function
         
@@ -69,6 +69,9 @@ def calculate_shmr(
     """
     halo_masses = np.asarray(halo_masses)
     
+    if parameters is None:
+        parameters = {}
+
     if isinstance(shmr_function, str):
         if shmr_function == "behroozi2010":
             stellar_masses = behroozi2010_shmr(halo_masses, **parameters)
@@ -91,7 +94,7 @@ def calculate_shmr(
     
     # Set default scatter and errors if not provided
     if scatter is None:
-        scatter = np.full(len(halo_masses), 0.3)  # 0.3 dex default scatter
+        scatter = np.full(len(halo_masses), 0.16)  # 0.16 dex default scatter
     else:
         scatter = np.asarray(scatter)
         if scatter.shape != halo_masses.shape:
@@ -105,7 +108,7 @@ def calculate_shmr(
             stellar_mass_errors = np.full(len(halo_masses), stellar_mass_errors.item() if stellar_mass_errors.size == 1 else stellar_mass_errors)
     
     # Default scatter errors (typically much smaller)
-    scatter_errors = np.full(len(halo_masses), 0.05)  # 0.05 dex scatter error
+    scatter_errors = np.full(len(halo_masses), 0.04)  # 0.04 dex scatter error
     
     # Create redshift interval
     redshift_interval = RedshiftInterval(
@@ -230,58 +233,83 @@ def interpolate_shmr(
 
 def behroozi2010_shmr(
     halo_mass: np.ndarray,
-    log_m1: float = 11.88,
-    ms0: float = 10.21,
-    beta: float = 0.48,
-    delta: float = 0.15,
-    gamma: float = 2.51
+    redshift: float = 0.0,
+    logMstar00: float = 10.72,
+    logMstar0a: float = 0.59,
+    logM10: float = 12.35,
+    logM1a: float = 0.30,
+    beta0: float = 0.43,
+    betaa: float = 0.18,
+    delta0: float = 0.56,
+    deltaa: float = 0.18,
+    gamma0: float = 1.54,
+    gammaa: float = 2.52,
 ) -> np.ndarray:
     """
-    Calculate SHMR using Behroozi+ 2010 parametrization.
-    
-    From Behroozi et al. 2010 (arXiv:1001.0015), Equation 2.
-    This is an earlier version of the abundance matching relation.
-    
+    Calculate the Stellar-to-Halo Mass Relation (SHMR) using the parametrization from Behroozi et al. (2010).
+
+    This function computes the stellar mass corresponding to a given halo mass at a specified redshift,
+    based on the empirical relations derived in Behroozi et al. 2010 (arXiv:1001.0015). The parameters
+    used in the calculation can be adjusted to fit different scenarios or datasets.
+
     Parameters
     ----------
-    halo_mass : array_like
-        Halo masses in solar masses
-    log_m1 : float
-        Characteristic halo mass (log10), default for z=0
-    ms0 : float  
-        Normalization (log10 stellar mass), default for z=0
-    beta : float
-        Low-mass slope, default for z=0
-    delta : float
-        High-mass slope, default for z=0
-    gamma : float
-        Turnover sharpness, default for z=0
-        
+    halo_mass : np.ndarray
+        An array of halo masses in solar masses for which the stellar masses are to be calculated.
+    redshift : float, optional
+        The redshift at which to calculate the SHMR (default is 0.0).
+    logMstar00 : float, optional
+        The initial value for the stellar mass relation (default is 10.72).
+    logMstar0a : float, optional
+        The redshift evolution parameter for stellar mass (default is 0.59).
+    logM10 : float, optional
+        The characteristic halo mass (default is 12.35).
+    logM1a : float, optional
+        The redshift evolution parameter for halo mass (default is 0.30).
+    beta0 : float, optional
+        The initial value for the beta parameter (default is 0.43).
+    betaa : float, optional
+        The redshift evolution parameter for beta (default is 0.18).
+    delta0 : float, optional
+        The initial value for the delta parameter (default is 0.56).
+    deltaa : float, optional
+        The redshift evolution parameter for delta (default is 0.18).
+    gamma0 : float, optional
+        The initial value for the gamma parameter (default is 1.54).
+    gammaa : float, optional
+        The redshift evolution parameter for gamma (default is 2.52).
+
     Returns
     -------
     np.ndarray
-        Stellar masses in solar masses
-        
+        An array of stellar masses in solar masses corresponding to the input halo masses.
+
     Notes
     -----
-    Default parameters are for z=0 from Behroozi+ 2010.
-    The form is: log(M*/M☉) = log(ε*M1) + f(log(M_h/M1)) - f(0)
-    where f(x) = -log10(10^(-α*x) + 1) + δ*(log10(1+exp(x)))^γ / (1+exp(10^(-x)))
-    and α = β, ε = 10^(ms0)/M1.
+    The default parameters are based on the values provided in Behroozi et al. (2010). The function
+    inverts the relationship presented by Behroozi to derive stellar masses from halo masses.
     """
-    log_mh = np.log10(halo_mass)
-    x = log_mh - log_m1
-    
-    # Using the form from Behroozi+ 2010, Eq. 2
-    # f(x) = -log10(10^(-α*x) + 1) + δ*(log10(1+exp(x)))^γ / (1+exp(10^(-x)))
-    alpha = beta  # In 2010 paper, α = β
-    f_x = -np.log10(10**(-alpha * x) + 1) + delta * (np.log10(1 + np.exp(x)))**gamma / (1 + np.exp(10**(-x)))
-    f_0 = -np.log10(10**(0) + 1) + delta * (np.log10(1 + np.exp(0)))**gamma / (1 + np.exp(10**(0)))
-    
-    # log(M*/M☉) = log(ε*M1) + f(log(M_h/M1)) - f(0)
-    # where ε = 10^(ms0)/M1, so log(ε*M1) = ms0  
-    log_ms = ms0 + f_x - f_0
-    return 10**log_ms
+    a = 1.0/(1.0+redshift)
+    logm0 = logMstar00 + logMstar0a*(a - 1.0)
+    logm1 = logM10 + logM1a*(a - 1.0)
+    beta  = beta0 + betaa*(a - 1.0)
+    delta = delta0 + deltaa*(a - 1.0)
+    gamma = gamma0 + gammaa*(a - 1.0)
+
+    # Behroozi present a relationship for Mh(Mstar) (not Mstar(Mh)), so we need to invert it
+    def logMh_from_logMstar(logMstar=np.linspace(4.0, 14.0, 5001)):
+        Mstar = 10**logMstar
+        ratio = Mstar / (10**logm0)
+        term3 = (ratio**delta) / (1.0 + ratio**(-gamma))
+        logMh = logm1 + beta*np.log10(Mstar / (10**logm0)) + term3 - 0.5 # (eq.21)
+        return logMh
+
+    logMstar_table=np.linspace(4.0, 14.0, 5001)
+    logMh_table = logMh_from_logMstar(logMstar_table)
+    logMh_target = np.log10(halo_mass)
+    logMstar = np.interp(logMh_target, logMh_table, logMstar_table)
+
+    return 10**logMstar
 
 
 def behroozi2013_shmr(

@@ -45,41 +45,23 @@ def create_behroozi2010_shmr():
     of the example file provided.
     """
     
-    # Define halo mass range (similar to example file)
-    log_mh_min, log_mh_max = 10.5, 15.0
-    n_points = 51  # Match the example file
-    
-    halo_masses = np.logspace(log_mh_min, log_mh_max, n_points)
-    
-    # Create redshift intervals matching the example structure
+    # Define halo mass range and bins
+    halo_masses = np.logspace(9.95, 15.05, 251) 
+    Nzbin = 40
+    zbin_edges = np.linspace(0,4,Nzbin+1)   
+    z_bins = [(zbin_edges[i],zbin_edges[i+1]) for i in np.arange(Nzbin)]
+     # Create redshift intervals
     redshift_intervals = []
     
-    # Define redshift bins and corresponding parameters
-    z_bins = [
-        (0.0, 0.333),      # z=0.0-0.33
-        (0.333, 0.667),    # z=0.33-0.67  
-        (0.667, 1.0)       # z=0.67-1.0
-    ]
     
-    # Behroozi+ 2010 parameters for different redshifts
-    # Parameters evolved with redshift according to their fitting formulae
-    param_sets = [
-        # z~0.17 (midpoint of first bin)
-        {"log_m1": 11.88, "ms0": 10.21, "beta": 0.48, "delta": 0.15, "gamma": 2.51},
-        # z~0.5 (midpoint of second bin) 
-        {"log_m1": 11.95, "ms0": 10.35, "beta": 0.50, "delta": 0.12, "gamma": 2.8},
-        # z~0.83 (midpoint of third bin)
-        {"log_m1": 12.05, "ms0": 10.55, "beta": 0.53, "delta": 0.10, "gamma": 3.2}
-    ]
-    
-    for i, ((z_min, z_max), params) in enumerate(zip(z_bins, param_sets)):
+    for i, (z_min, z_max) in enumerate(z_bins):
         print(f"Creating redshift interval {i+1}: z={z_min:.3f}-{z_max:.3f}")
         
         # Calculate stellar masses using Behroozi 2010 model
         stellar_masses = calculate_shmr(
             halo_masses=halo_masses,
             shmr_function="behroozi2010",
-            parameters=params,
+            parameters=None, # Use default Behroozi2010 parameters
             redshift=(z_min + z_max) / 2,
             redshift_width=z_max - z_min,
             cosmology=create_behroozi2010_cosmology(),
