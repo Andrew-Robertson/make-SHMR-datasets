@@ -59,7 +59,7 @@ def save_galacticus_shmr(data: GalacticusSHMRData, filepath: Union[str, Path]) -
         
         # Create redshift interval groups
         for i, interval in enumerate(data.redshift_intervals):
-            group_name = f'redshiftInterval{i}'
+            group_name = f'redshiftInterval{i+1}'
             interval_group = f.create_group(group_name)
             
             # Set group attributes
