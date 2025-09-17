@@ -113,7 +113,7 @@ def main():
         base_filename = "example_shmr_z0"
         
         # Save as HDF5 (recommended for large datasets)
-        h5_file = output_dir / f"{base_filename}.h5"
+        h5_file = output_dir / f"{base_filename}.hdf5"
         save_shmr(shmr_data, h5_file, format="hdf5")
         print(f"Saved HDF5 file: {h5_file}")
         
@@ -149,7 +149,7 @@ def main():
 {chr(10).join([f"- **{k}**: {v}" for k, v in metadata.cosmology.items()])}
 
 ## Files
-- `{base_filename}.h5`: HDF5 format (recommended for analysis)
+- `{base_filename}.hdf5`: HDF5 format (recommended for analysis)
 - `{base_filename}.yaml`: YAML format (human-readable)
 
 ## Usage
@@ -157,7 +157,7 @@ def main():
 from shmr_datasets import load_shmr
 
 # Load the data
-shmr_data = load_shmr("{base_filename}.h5")
+shmr_data = load_shmr("{base_filename}.hdf5")
 
 # Access data arrays
 halo_mass = shmr_data.halo_mass

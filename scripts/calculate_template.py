@@ -150,7 +150,7 @@ def save_dataset(shmr_data, output_dir, filename_base):
     output_dir.mkdir(parents=True, exist_ok=True)
     
     # Save as HDF5
-    h5_file = output_dir / f"{filename_base}.h5"
+    h5_file = output_dir / f"{filename_base}.hdf5"
     save_shmr(shmr_data, h5_file, format="hdf5")
     print(f"Saved HDF5 file: {h5_file}")
     

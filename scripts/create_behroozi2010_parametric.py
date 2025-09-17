@@ -126,7 +126,7 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
     
     # Save the dataset
-    output_file = output_dir / "behroozi2010_parametric.h5"
+    output_file = output_dir / "behroozi2010_parametric.hdf5"
     save_galacticus_shmr(shmr_data, output_file)
     
     print(f"\nDataset saved to: {output_file}")

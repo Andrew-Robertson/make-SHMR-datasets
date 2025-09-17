@@ -34,8 +34,8 @@ def save_galacticus_shmr(data: GalacticusSHMRData, filepath: Union[str, Path]) -
     filepath = Path(filepath)
     
     # Validate file extension
-    if filepath.suffix not in ['.h5', '.hdf5']:
-        raise ValueError("Galacticus format requires .h5 or .hdf5 extension")
+    if filepath.suffix != '.hdf5':
+        raise ValueError("Galacticus format requires .hdf5 extension")
     
     # Validate halo mass definition
     if not validate_halo_mass_definition(data.haloMassDefinition):

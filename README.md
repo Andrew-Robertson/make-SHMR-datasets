@@ -74,7 +74,7 @@ from shmr_datasets import (
 import numpy as np
 
 # Load an existing Galacticus-format dataset
-shmr_data = load_galacticus_shmr("data/theory/behroozi2013/behroozi2013_z0_galacticus.h5")
+shmr_data = load_galacticus_shmr("data/theory/behroozi2013/behroozi2013_z0_galacticus.hdf5")
 
 # Access data
 interval = shmr_data.redshift_intervals[0]  # First redshift interval
@@ -98,7 +98,7 @@ calculated_shmr = calculate_shmr(
 )
 
 # Save in Galacticus format
-save_galacticus_shmr(calculated_shmr, "my_shmr.h5")
+save_galacticus_shmr(calculated_shmr, "my_shmr.hdf5")
 ```
 
 ### Using with Galacticus
@@ -107,7 +107,7 @@ Once you have a properly formatted HDF5 file, you can use it directly in Galacti
 
 ```xml
 <stellarHaloMassRelation value="file">
-  <fileName value="path/to/your/shmr_file.h5"/>
+  <fileName value="path/to/your/shmr_file.hdf5"/>
 </stellarHaloMassRelation>
 ```
 
@@ -143,10 +143,10 @@ The package includes implementations of several common SHMR parametrizations:
 
 The repository includes validated example datasets:
 
-- **Behroozi et al. 2010**: `data/theory/behroozi2010/behroozi2010_parametric.h5` (parametric model)
-- **Behroozi et al. 2013**: `data/theory/behroozi2013/behroozi2013_z0_galacticus.h5`
-- **Moster et al. 2013**: `data/theory/moster2013/moster2013_z0_galacticus.h5`
-- **UniverseMachine**: `data/simulations/universemachine/universemachine_downloaded.h5` (downloaded data)
+- **Behroozi et al. 2010**: `data/theory/behroozi2010/behroozi2010_parametric.hdf5` (parametric model)
+- **Behroozi et al. 2013**: `data/theory/behroozi2013/behroozi2013_z0_galacticus.hdf5`
+- **Moster et al. 2013**: `data/theory/moster2013/moster2013_z0_galacticus.hdf5`
+- **UniverseMachine**: `data/simulations/universemachine/universemachine_downloaded.hdf5` (downloaded data)
 
 All datasets pass Galacticus format validation and can be used directly in simulations.
 

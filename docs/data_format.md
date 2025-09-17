@@ -1,160 +1,164 @@
-# SHMR Data Format Specification
+# SHMR Data Format Specification (Galacticus Compatible)
 
 ## Overview
 
-This document describes the standardized data format used in the SHMR (Stellar Mass - Halo Mass Relations) datasets repository. The format is designed to ensure complete data provenance, compatibility with analysis tools, and ease of use for astrophysical applications.
+This document describes the standardized HDF5 data format used in the SHMR (Stellar Mass - Halo Mass Relations) datasets repository. The format is designed to be directly compatible with Galacticus's `stellarHaloMassRelation` analysis class, ensuring complete data provenance and ease of integration with astrophysical simulations.
 
-## File Formats
+## File Format
 
-The repository supports three file formats:
+The repository supports **HDF5 format only** (`.hdf5` extension):
 
-### 1. HDF5 (.h5)
-- **Best for**: Large datasets, binary storage with compression
-- **Compression**: Automatic gzip compression for data arrays
-- **Metadata**: Stored as HDF5 attributes
-- **Use case**: Primary format for distribution and archival
+- **Primary format**: HDF5 with automatic gzip compression for data arrays
+- **Metadata**: Stored as HDF5 attributes and group structures
+- **Compatibility**: Direct integration with Galacticus simulation code
+- **Use case**: All dataset storage, distribution, and archival
 
-### 2. YAML (.yaml)
-- **Best for**: Human-readable datasets, configuration files
-- **Compression**: None (text-based)
-- **Metadata**: Fully human-readable structure
-- **Use case**: Small datasets, documentation, examples
+## Galacticus Data Structure
 
-### 3. JSON (.json)
-- **Best for**: Web compatibility, API integration
-- **Compression**: None (text-based)
-- **Metadata**: Standard JSON structure
-- **Use case**: Web applications, API responses
+Each SHMR dataset file must contain the following structure to be compatible with Galacticus:
 
-## Data Structure
+### Required Top-Level Attributes
+- `haloMassDefinition`: Halo mass definition (e.g., "virial", "Bryan & Norman (1998)", "200 * critical density")
+- `label`: Space-free label for the dataset (e.g., "Behroozi2010")
+- `reference`: Reference citation suitable for figures (e.g., "Behroozi et al. (2010)")
 
-Each SHMR dataset consists of:
+### Required Groups
 
-### Required Data Arrays
-- `halo_mass`: Array of halo masses (units specified in metadata)
-- `stellar_mass`: Array of corresponding stellar masses (units specified in metadata)
+#### Cosmology Group (`/cosmology`)
+Contains cosmological parameters as attributes:
+- `OmegaMatter`: Matter density parameter (Ω_M)
+- `OmegaDarkEnergy`: Dark energy density parameter (Ω_Λ)  
+- `OmegaBaryon`: Baryon density parameter (Ω_b)
+- `HubbleConstant`: Hubble constant in km/s/Mpc (H₀)
 
-### Optional Data Arrays
-- `stellar_mass_err_lower`: Lower uncertainties on stellar masses
-- `stellar_mass_err_upper`: Upper uncertainties on stellar masses
-- `halo_mass_err_lower`: Lower uncertainties on halo masses
-- `halo_mass_err_upper`: Upper uncertainties on halo masses
-- `extra_data`: Dictionary of additional data arrays (e.g., redshift, scatter)
+#### Redshift Interval Groups (`/redshiftIntervalN`)
+One or more groups named `redshiftInterval0`, `redshiftInterval1`, etc., each containing:
 
-### Metadata Fields
+##### Required Datasets (all in solar masses M☉ unless otherwise noted):
+- `massHalo`: Halo masses
+- `massStellar`: Stellar masses
+- `massStellarError`: Uncertainties in stellar masses
+- `massStellarScatter`: Intrinsic scatter in stellar mass (in dex)
+- `massStellarScatterError`: Uncertainties in intrinsic scatter (in dex)
 
-#### Required Fields
-- `name`: Short descriptive name for the dataset
-- `version`: Version string (e.g., "1.0", "2.1")
-- `description`: Detailed description of the data
-- `source_type`: Type of data source ("observation", "simulation", "theory", "compilation")
-- `reference`: Primary reference (paper, survey, etc.)
-- `creation_method`: How the data was created ("download", "calculation", "extraction", "compilation")
-- `creation_date`: ISO format date string (YYYY-MM-DD)
-- `created_by`: Person or organization who created the dataset
+##### Required Group Attributes:
+- `redshiftMinimum`: Minimum redshift for this interval
+- `redshiftMaximum`: Maximum redshift for this interval
 
-#### Optional Fields
-- `doi`: DOI of primary reference
-- `url`: URL where data was obtained
-- `cosmology`: Dictionary of cosmological parameters
-- `redshift`: Redshift(s) of the data (float or list)
-- `stellar_mass_definition`: Definition of stellar mass used
-- `halo_mass_definition`: Definition of halo mass used (e.g., "M200c", "Mvir")
-- `mass_range`: Dictionary with mass range information
-- `uncertainties_included`: Boolean indicating if uncertainties are available
-- `systematic_errors`: Description of systematic uncertainties
-- `limitations`: Known limitations or caveats
-- `units`: Dictionary specifying units for each quantity
-- `tags`: List of descriptive tags
-- `notes`: Additional notes or comments
-- `related_datasets`: List of related dataset names
+##### Optional Dataset Attributes:
+- `description`: Human-readable description of the dataset
+- `unitsInSI`: Multiplicative factor to convert to SI units
+
+### Supported Halo Mass Definitions
+
+Galacticus supports the following halo mass definitions:
+- `"spherical collapse"` or `"virial"`: Spherical collapse calculations
+- `"Bryan & Norman (1998)"`: Bryan & Norman (1998) fitting formula
+- `"200 * mean density"`: 200 times mean density of universe
+- `"200 * critical density"`: 200 times critical density of universe
+- `"500 * mean density"`: 500 times mean density of universe
+- `"500 * critical density"`: 500 times critical density of universe
+- And similar for other overdensity values
 
 ## Example Data Structure
 
-```yaml
-metadata:
-  name: "Behroozi et al. 2013 SHMR"
-  version: "1.0"
-  description: "Stellar mass - halo mass relation from Behroozi et al. 2013"
-  source_type: "observation"
-  reference: "Behroozi, Wechsler & Conroy 2013, ApJ, 770, 57"
-  doi: "10.1088/0004-637X/770/1/57"
-  creation_method: "extraction"
-  creation_date: "2024-01-15"
-  created_by: "A. Robertson"
-  redshift: 0.0
-  stellar_mass_definition: "total"
-  halo_mass_definition: "M200c"
-  cosmology:
-    h: 0.7
-    omega_m: 0.27
-    omega_lambda: 0.73
-  units:
-    stellar_mass: "Msun"
-    halo_mass: "Msun"
-  uncertainties_included: true
-  tags: ["abundance_matching", "central_galaxies"]
-  
-data:
-  halo_mass: [1.0e10, 1.0e11, 1.0e12, 1.0e13, 1.0e14]
-  stellar_mass: [1.0e7, 1.0e9, 1.0e10, 5.0e10, 1.0e11]
-  stellar_mass_err_lower: [0.1e7, 0.1e9, 0.1e10, 0.5e10, 0.1e11]
-  stellar_mass_err_upper: [0.1e7, 0.1e9, 0.1e10, 0.5e10, 0.1e11]
+```python
+# Example using h5py
+import h5py
+
+with h5py.File('example_shmr.hdf5', 'w') as f:
+    # Top-level attributes
+    f.attrs['haloMassDefinition'] = 'virial'
+    f.attrs['label'] = 'Behroozi2010'
+    f.attrs['reference'] = 'Behroozi et al. (2010)'
+    
+    # Cosmology group
+    cosmo = f.create_group('cosmology')
+    cosmo.attrs['OmegaMatter'] = 0.279
+    cosmo.attrs['OmegaDarkEnergy'] = 0.721
+    cosmo.attrs['OmegaBaryon'] = 0.0469
+    cosmo.attrs['HubbleConstant'] = 70.0
+    
+    # Redshift interval
+    interval = f.create_group('redshiftInterval0')
+    interval.attrs['redshiftMinimum'] = 0.0
+    interval.attrs['redshiftMaximum'] = 0.5
+    
+    # Datasets with attributes
+    mh = interval.create_dataset('massHalo', data=halo_masses)
+    mh.attrs['description'] = 'Halo mass'
+    mh.attrs['unitsInSI'] = 1.98847e30  # M☉ to kg
+    
+    ms = interval.create_dataset('massStellar', data=stellar_masses)
+    ms.attrs['description'] = 'Stellar mass'
+    ms.attrs['unitsInSI'] = 1.98847e30  # M☉ to kg
+    
+    # Additional required datasets...
 ```
 
 ## Validation Rules
 
-1. **Array Consistency**: All data arrays must have the same length
-2. **Positive Masses**: All mass values must be positive
-3. **Unit Consistency**: Units must be specified and consistent throughout
-4. **Metadata Completeness**: All required metadata fields must be present
-5. **Error Array Matching**: Error arrays, if present, must match data array lengths
+1. **Required Structure**: Must contain all required groups and attributes
+2. **Array Consistency**: All datasets within a redshift interval must have same length
+3. **Positive Masses**: All mass values must be positive
+4. **Valid Cosmology**: Cosmological parameters must be physically reasonable
+5. **Halo Mass Definition**: Must be one of the supported definitions
+6. **Redshift Ordering**: Redshift intervals should not overlap
 
 ## Naming Conventions
 
 ### File Names
-- Use descriptive names: `behroozi2013_z0_central.h5`
-- Include key parameters: redshift, galaxy type, etc.
+- Use descriptive names: `behroozi2010_parametric.hdf5`
+- Include key parameters: redshift range, galaxy type, etc.
 - Use lowercase with underscores
+- Always use `.hdf5` extension
 
-### Dataset Names  
-- Use author + year format: "Behroozi et al. 2013"
-- Include key distinguishing features: "z=2.0", "centrals only"
+### Dataset Labels  
+- Use author + year format: "Behroozi2010", "Moster2013"
+- Keep space-free for Galacticus compatibility
+- Include distinguishing features if multiple variants exist
 
 ### Directory Structure
 ```
 data/
 ├── observations/
-│   ├── behroozi2013/
-│   └── moster2013/
+│   └── leauthaud2012/
 ├── simulations/
-│   ├── eagle/
-│   └── illustris/
+│   └── universemachine/
 └── theory/
-    ├── analytical_models/
-    └── semi_analytical/
+    ├── behroozi2010/
+    ├── behroozi2013/
+    └── moster2013/
 ```
-
-## Version Control
-
-- Use semantic versioning (MAJOR.MINOR.PATCH)
-- Increment MAJOR for incompatible changes
-- Increment MINOR for new features
-- Increment PATCH for bug fixes
 
 ## Integration with Galacticus
 
-The format is designed to be easily convertible to Galacticus input formats:
+Files following this format can be used directly in Galacticus parameter files:
 
-1. **Mass definitions**: Standard definitions compatible with Galacticus
-2. **Units**: Solar masses as primary unit
-3. **Cosmology**: Standard cosmological parameters
-4. **Interpolation**: Built-in interpolation functions for smooth relations
+```xml
+<stellarHaloMassRelation value="file">
+  <fileName value="path/to/dataset.hdf5"/>
+</stellarHaloMassRelation>
+```
+
+Galacticus will automatically:
+1. Read the cosmological parameters and apply conversions if needed
+2. Use the specified halo mass definition for internal calculations
+3. Interpolate between redshift intervals as needed
+4. Apply appropriate unit conversions using `unitsInSI` attributes
 
 ## Quality Assurance
 
-All datasets should include:
-1. **Validation**: Pass format validation checks
-2. **Documentation**: Complete metadata and provenance
-3. **Testing**: Verify physical reasonableness
-4. **Review**: Peer review of data extraction/calculation
+All datasets should:
+1. **Pass Validation**: Use `scripts/validate.py` to ensure format compliance
+2. **Include Provenance**: Complete documentation of data sources and methods
+3. **Physical Validation**: Verify results are physically reasonable
+4. **Galacticus Testing**: Test compatibility with actual Galacticus runs
+
+## Creating New Datasets
+
+Use the provided example scripts:
+- `scripts/create_behroozi2010_parametric.py`: Creating from parametric models
+- `scripts/create_universemachine_downloaded.py`: Creating from downloaded data
+
+Both scripts demonstrate the complete workflow from data sources to validated Galacticus-compatible files.

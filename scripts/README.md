@@ -18,7 +18,7 @@ Creates an SHMR dataset from the Behroozi et al. 2010 parametric model (arXiv:10
 python scripts/create_behroozi2010_parametric.py
 ```
 
-**Output**: `data/theory/behroozi2010/behroozi2010_parametric.h5`
+**Output**: `data/theory/behroozi2010/behroozi2010_parametric.hdf5`
 
 ## Downloaded Data Example
 
@@ -36,15 +36,15 @@ Creates an SHMR dataset based on the UniverseMachine project (Behroozi et al. 20
 python scripts/create_universemachine_downloaded.py
 ```
 
-**Output**: `data/simulations/universemachine/universemachine_downloaded.h5`
+**Output**: `data/simulations/universemachine/universemachine_downloaded.hdf5`
 
 ## Validation
 
 Both scripts automatically validate their output using the included validation tool:
 
 ```bash
-python scripts/validate.py data/theory/behroozi2010/behroozi2010_parametric.h5
-python scripts/validate.py data/simulations/universemachine/universemachine_downloaded.h5
+python scripts/validate.py data/theory/behroozi2010/behroozi2010_parametric.hdf5
+python scripts/validate.py data/simulations/universemachine/universemachine_downloaded.hdf5
 ```
 
 ## Using in Galacticus
@@ -53,7 +53,7 @@ All created datasets can be used directly in Galacticus parameter files:
 
 ```xml
 <stellarHaloMassRelation value="file">
-  <fileName value="path/to/dataset.h5"/>
+  <fileName value="path/to/dataset.hdf5"/>
 </stellarHaloMassRelation>
 ```
 

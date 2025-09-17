@@ -85,19 +85,19 @@ def validate_directory(directory):
         Summary of validation results
     """
     # Find all HDF5 files
-    h5_files = list(directory.rglob("*.h5")) + list(directory.rglob("*.hdf5"))
+    hdf5_files = list(directory.rglob("*.hdf5"))
     
-    if not h5_files:
+    if not hdf5_files:
         print(f"No HDF5 files found in {directory}")
         return {"total": 0, "valid": 0, "invalid": 0}
     
-    print(f"Found {len(h5_files)} HDF5 files to validate")
+    print(f"Found {len(hdf5_files)} HDF5 files to validate")
     print("=" * 60)
     
     valid_count = 0
     invalid_count = 0
     
-    for filepath in sorted(h5_files):
+    for filepath in sorted(hdf5_files):
         results = validate_file(filepath)
         
         if results["valid"]:
@@ -110,7 +110,7 @@ def validate_directory(directory):
     # Print summary
     print(f"\nValidation Summary")
     print("=" * 40)
-    print(f"Total files: {len(h5_files)}")
+    print(f"Total files: {len(hdf5_files)}")
     print(f"Valid files: {valid_count}")
     print(f"Invalid files: {invalid_count}")
     
@@ -120,7 +120,7 @@ def validate_directory(directory):
         print(f"⚠️  {invalid_count} files have validation issues")
     
     return {
-        "total": len(h5_files),
+        "total": len(hdf5_files),
         "valid": valid_count, 
         "invalid": invalid_count
     }
@@ -134,13 +134,13 @@ def main():
         epilog="""
 Examples:
   # Validate a single file
-  python validate.py data/theory/behroozi2013/behroozi2013_z0_galacticus.h5
+  python validate.py data/theory/behroozi2013/behroozi2013_z0_galacticus.hdf5
   
   # Validate all files in a directory
   python validate.py data/
   
   # Validate specific file types
-  python validate.py data/ --pattern "*.h5"
+  python validate.py data/ --pattern "*.hdf5"
         """
     )
     
@@ -152,8 +152,8 @@ Examples:
     
     parser.add_argument(
         "--pattern",
-        default="*.h5",
-        help="File pattern to match when validating directories (default: *.h5)"
+        default="*.hdf5",
+        help="File pattern to match when validating directories (default: *.hdf5)"
     )
     
     parser.add_argument(
