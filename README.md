@@ -1,16 +1,36 @@
 # SHMR Datasets Repository
 
-A repository for storing and managing stellar mass - halo mass relations (SHMRs) with complete data provenance and compatibility with astrophysical simulation codes like Galacticus.
+A repository for storing and managing stellar mass - halo mass relations (SHMRs) in the exact format required by [Galacticus](https://github.com/galacticusorg/galacticus), with complete data provenance and quality assurance.
 
 ## Overview
 
 This repository provides a standardized framework for:
 
-- **Data Storage**: Standardized formats for SHMR datasets with comprehensive metadata
+- **Galacticus Compatibility**: Data stored in the exact HDF5 format expected by Galacticus's `stellarHaloMassRelation` analysis class
 - **Data Provenance**: Complete documentation of data sources, processing methods, and limitations  
 - **Reproducibility**: Scripts and notebooks documenting how datasets were created or downloaded
 - **Validation**: Tools to ensure data quality and format compliance
-- **Integration**: Easy integration with simulation codes and analysis pipelines
+- **Integration**: Direct usage with Galacticus simulations and other astrophysical codes
+
+## Galacticus Format Specification
+
+The repository uses the standard Galacticus SHMR format with:
+
+### File Structure
+- **Top-level attributes**: `haloMassDefinition`, `label`, `reference`
+- **Cosmology group**: Contains `OmegaMatter`, `OmegaDarkEnergy`, `OmegaBaryon`, `HubbleConstant`
+- **Redshift interval groups**: `redshiftInterval0`, `redshiftInterval1`, etc.
+
+### Each Redshift Interval Contains
+- **Datasets**: `massHalo`, `massStellar`, `massStellarError`, `massStellarScatter`, `massStellarScatterError`
+- **Attributes**: `redshiftMinimum`, `redshiftMaximum`
+- **Dataset attributes**: `description` and `unitsInSI` (conversion factors to SI units)
+
+### Supported Halo Mass Definitions
+- `"virial"` or `"spherical collapse"`
+- `"Bryan & Norman (1998)"`
+- `"200 * critical density"`, `"500 * critical density"`, etc.
+- `"200 * mean density"`, `"500 * mean density"`, etc.
 
 ## Repository Structure
 
@@ -22,7 +42,7 @@ This repository provides a standardized framework for:
 ├── scripts/                  # Data collection and processing scripts
 │   ├── download_template.py  # Template for downloading data
 │   ├── calculate_template.py # Template for calculating SHMRs
-│   └── validate.py          # Data validation script
+│   └── validate.py          # Galacticus format validation script
 ├── notebooks/               # Jupyter notebooks for documentation and examples
 ├── docs/                    # Documentation and specifications
 ├── src/shmr_datasets/       # Python package for SHMR data handling
@@ -40,84 +60,58 @@ cd make-SHMR-datasets
 
 # Install the package (development mode)
 pip install -e .
-
-# Or install dependencies only
-pip install -r requirements.txt
 ```
 
 ### Basic Usage
 
 ```python
-from shmr_datasets import load_shmr, calculate_shmr, save_shmr
+from shmr_datasets import (
+    load_galacticus_shmr, 
+    calculate_shmr, 
+    save_galacticus_shmr,
+    create_example_cosmology
+)
+import numpy as np
 
-# Load an existing dataset
-shmr_data = load_shmr("data/theory/behroozi2013/behroozi2013_z0_central.h5")
+# Load an existing Galacticus-format dataset
+shmr_data = load_galacticus_shmr("data/theory/behroozi2013/behroozi2013_z0_galacticus.h5")
 
 # Access data
-halo_masses = shmr_data.halo_mass
-stellar_masses = shmr_data.stellar_mass
-print(f"Reference: {shmr_data.metadata.reference}")
+interval = shmr_data.redshift_intervals[0]  # First redshift interval
+halo_masses = interval.massHalo
+stellar_masses = interval.massStellar
+print(f"Reference: {shmr_data.reference}")
+print(f"Label: {shmr_data.label}")
+print(f"Halo mass definition: {shmr_data.haloMassDefinition}")
 
 # Calculate a theoretical SHMR
-import numpy as np
 halo_masses = np.logspace(10, 15, 100)
 calculated_shmr = calculate_shmr(
     halo_masses=halo_masses,
     shmr_function="behroozi2013",
     parameters={"log_m1": 12.35, "ms0": 10.72, "beta": 0.44, "delta": 0.57, "gamma": 1.56},
-    name="My Behroozi SHMR",
-    reference="Behroozi+ 2013",
-    creation_date="2024-01-15",
-    created_by="Your Name"
+    redshift=0.0,
+    cosmology=create_example_cosmology(),
+    halo_mass_definition="virial",
+    label="Behroozi2013",
+    reference="Behroozi et al. (2013)"
 )
 
-# Save the dataset
-save_shmr(calculated_shmr, "my_shmr.h5")
+# Save in Galacticus format
+save_galacticus_shmr(calculated_shmr, "my_shmr.h5")
 ```
 
-## Data Format
+### Using with Galacticus
 
-The repository uses a standardized format that includes:
+Once you have a properly formatted HDF5 file, you can use it directly in Galacticus:
 
-### Data Arrays
-- `halo_mass`: Halo masses (with units specified in metadata)
-- `stellar_mass`: Corresponding stellar masses
-- Optional uncertainty arrays for both quantities
-- Additional data fields as needed
-
-### Metadata Fields
-- **Identification**: name, version, description
-- **Provenance**: source type, reference, DOI, creation method
-- **Physical Parameters**: redshift, mass definitions, cosmology
-- **Quality Information**: uncertainties, limitations, systematic errors
-
-### Supported Formats
-- **HDF5** (`.h5`): Binary format with compression, best for large datasets
-- **YAML** (`.yaml`): Human-readable format, good for small datasets and documentation
-- **JSON** (`.json`): Web-compatible format
-
-See [docs/data_format.md](docs/data_format.md) for complete specification.
-
-## Creating New Datasets
-
-### From Downloaded Data
-
-Use the download template to create reproducible data collection workflows:
-
-```bash
-cp scripts/download_template.py scripts/download_my_data.py
-# Edit the script to download and process your specific dataset
-python scripts/download_my_data.py
+```xml
+<stellarHaloMassRelation value="file">
+  <fileName value="path/to/your/shmr_file.h5"/>
+</stellarHaloMassRelation>
 ```
 
-### From Theoretical Models
-
-Use the calculation template to create datasets from parametric models:
-
-```bash
-cp scripts/calculate_template.py scripts/calculate_my_model.py
-# Edit the script to implement your specific SHMR model
-python scripts/calculate_my_model.py
+Galacticus will automatically read the cosmology, halo mass definition, and redshift intervals, applying appropriate conversions as needed.
 ```
 
 ### Validation
@@ -144,24 +138,20 @@ The package includes implementations of several common SHMR parametrizations:
 - **Double Power Law**: Simple parametric form
 - **Custom Functions**: Support for user-defined functions
 
-## Integration with Galacticus
+## Example Datasets
 
-The data format is designed to be easily convertible to Galacticus input formats:
+The repository includes validated example datasets:
 
-```python
-# Load SHMR data
-shmr_data = load_shmr("my_dataset.h5")
+- **Behroozi et al. 2013**: `data/theory/behroozi2013/behroozi2013_z0_galacticus.h5`
+- **Moster et al. 2013**: `data/theory/moster2013/moster2013_z0_galacticus.h5`
 
-# Convert for Galacticus (example workflow)
-# Implementation depends on specific Galacticus requirements
-galacticus_data = convert_to_galacticus_format(shmr_data)
-```
+All datasets pass Galacticus format validation and can be used directly in simulations.
 
 ## Contributing
 
 Contributions are welcome! Please:
 
-1. **Follow the data format specification**
+1. **Follow the Galacticus format specification**
 2. **Include complete metadata and provenance**
 3. **Add validation and documentation**
 4. **Submit datasets with reproducible creation scripts**
@@ -171,7 +161,7 @@ Contributions are welcome! Please:
 1. Create appropriate directory structure under `data/`
 2. Include creation script in `scripts/`
 3. Add documentation (README, notebook if appropriate)
-4. Validate the dataset
+4. Validate the dataset with `scripts/validate.py`
 5. Submit via pull request
 
 ### Code Contributions

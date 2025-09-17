@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Validation script for SHMR datasets.
+Validation script for Galacticus-compatible SHMR datasets.
 
-This script validates SHMR data files against the standard format
-and reports any issues or warnings.
+This script validates SHMR data files against the Galacticus format
+specification and reports any issues or warnings.
 """
 
 import sys
@@ -13,31 +13,28 @@ from pathlib import Path
 # Add the src directory to Python path
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
-from shmr_datasets import load_shmr, validate_shmr
+from shmr_datasets import validate_galacticus_file, print_galacticus_file_info
 
 
 def validate_file(filepath):
     """
-    Validate a single SHMR file.
+    Validate a single Galacticus SHMR file.
     
-    Parameters:
-    -----------
+    Parameters
+    ----------
     filepath : Path
         Path to the SHMR file to validate
         
-    Returns:
-    --------
+    Returns
+    -------
     dict
         Validation results
     """
     try:
-        # Load the data
-        print(f"Loading {filepath}...")
-        shmr_data = load_shmr(filepath)
+        print(f"Validating {filepath}...")
         
-        # Validate the data
-        print("Validating data...")
-        results = validate_shmr(shmr_data)
+        # Validate the file format
+        results = validate_galacticus_file(filepath)
         
         # Print results
         print(f"\nValidation Results for {filepath.name}")
@@ -48,26 +45,23 @@ def validate_file(filepath):
         else:
             print("❌ INVALID: Dataset has validation errors")
         
+        # Print errors
         if results["errors"]:
-            print(f"\n🚫 Errors ({len(results['errors'])}):")
-            for i, error in enumerate(results["errors"], 1):
-                print(f"  {i}. {error}")
+            print("\nErrors:")
+            for error in results["errors"]:
+                print(f"  ❌ {error}")
         
+        # Print warnings
         if results["warnings"]:
-            print(f"\n⚠️  Warnings ({len(results['warnings'])}):")
-            for i, warning in enumerate(results["warnings"], 1):
-                print(f"  {i}. {warning}")
+            print("\nWarnings:")
+            for warning in results["warnings"]:
+                print(f"  ⚠️  {warning}")
         
-        # Print dataset summary
-        print(f"\n📊 Dataset Summary:")
-        print(f"  Name: {shmr_data.metadata.name}")
-        print(f"  Version: {shmr_data.metadata.version}")
-        print(f"  Reference: {shmr_data.metadata.reference}")
-        print(f"  Data points: {shmr_data.n_points}")
-        print(f"  Halo mass range: {shmr_data.halo_mass.min():.2e} - {shmr_data.halo_mass.max():.2e}")
-        print(f"  Stellar mass range: {shmr_data.stellar_mass.min():.2e} - {shmr_data.stellar_mass.max():.2e}")
-        print(f"  Has stellar mass errors: {shmr_data.has_stellar_mass_errors()}")
-        print(f"  Has halo mass errors: {shmr_data.has_halo_mass_errors()}")
+        # Print file info if valid
+        if results["valid"]:
+            print("\nFile Information:")
+            print("-" * 30)
+            print_galacticus_file_info(filepath)
         
         return results
         
@@ -80,94 +74,121 @@ def validate_directory(directory):
     """
     Validate all SHMR files in a directory.
     
-    Parameters:
-    -----------
+    Parameters
+    ----------
     directory : Path
         Directory containing SHMR files
+        
+    Returns
+    -------
+    dict
+        Summary of validation results
     """
-    shmr_extensions = {'.h5', '.yaml', '.yml', '.json'}
-    shmr_files = []
+    # Find all HDF5 files
+    h5_files = list(directory.rglob("*.h5")) + list(directory.rglob("*.hdf5"))
     
-    for ext in shmr_extensions:
-        shmr_files.extend(directory.glob(f"**/*{ext}"))
+    if not h5_files:
+        print(f"No HDF5 files found in {directory}")
+        return {"total": 0, "valid": 0, "invalid": 0}
     
-    if not shmr_files:
-        print(f"No SHMR files found in {directory}")
-        return
-    
-    print(f"Found {len(shmr_files)} files to validate")
+    print(f"Found {len(h5_files)} HDF5 files to validate")
+    print("=" * 60)
     
     valid_count = 0
     invalid_count = 0
     
-    for filepath in shmr_files:
-        print("\n" + "="*60)
+    for filepath in sorted(h5_files):
         results = validate_file(filepath)
         
         if results["valid"]:
             valid_count += 1
         else:
             invalid_count += 1
+        
+        print("\n" + "-" * 60)
     
-    print("\n" + "="*60)
-    print(f"VALIDATION SUMMARY")
-    print(f"Total files: {len(shmr_files)}")
-    print(f"Valid: {valid_count}")
-    print(f"Invalid: {invalid_count}")
+    # Print summary
+    print(f"\nValidation Summary")
+    print("=" * 40)
+    print(f"Total files: {len(h5_files)}")
+    print(f"Valid files: {valid_count}")
+    print(f"Invalid files: {invalid_count}")
     
     if invalid_count == 0:
-        print("🎉 All files passed validation!")
+        print("🎉 All files are valid!")
     else:
-        print(f"⚠️  {invalid_count} files failed validation")
+        print(f"⚠️  {invalid_count} files have validation issues")
+    
+    return {
+        "total": len(h5_files),
+        "valid": valid_count, 
+        "invalid": invalid_count
+    }
 
 
 def main():
     """Main validation function."""
     parser = argparse.ArgumentParser(
-        description="Validate SHMR dataset files",
+        description="Validate SHMR datasets in Galacticus format",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python validate.py file.h5                    # Validate single file
-  python validate.py data/                      # Validate all files in directory
-  python validate.py data/ --recursive          # Validate recursively
+  # Validate a single file
+  python validate.py data/theory/behroozi2013/behroozi2013_z0_galacticus.h5
+  
+  # Validate all files in a directory
+  python validate.py data/
+  
+  # Validate specific file types
+  python validate.py data/ --pattern "*.h5"
         """
     )
     
     parser.add_argument(
         "path",
+        type=Path,
         help="Path to SHMR file or directory to validate"
     )
     
     parser.add_argument(
-        "--recursive", "-r",
+        "--pattern",
+        default="*.h5",
+        help="File pattern to match when validating directories (default: *.h5)"
+    )
+    
+    parser.add_argument(
+        "--verbose", "-v",
         action="store_true",
-        help="Search for files recursively (default for directories)"
+        help="Enable verbose output"
     )
     
     args = parser.parse_args()
     
-    path = Path(args.path)
-    
-    if not path.exists():
-        print(f"Error: Path {path} does not exist")
+    # Check if path exists
+    if not args.path.exists():
+        print(f"❌ Error: Path '{args.path}' does not exist")
         sys.exit(1)
     
-    print("SHMR Dataset Validation")
-    print("=" * 40)
-    
-    if path.is_file():
-        # Validate single file
-        results = validate_file(path)
-        sys.exit(0 if results["valid"] else 1)
-    
-    elif path.is_dir():
-        # Validate directory
-        validate_directory(path)
-        sys.exit(0)
-    
-    else:
-        print(f"Error: {path} is neither a file nor a directory")
+    try:
+        if args.path.is_file():
+            # Validate single file
+            results = validate_file(args.path)
+            sys.exit(0 if results["valid"] else 1)
+        
+        elif args.path.is_dir():
+            # Validate directory
+            summary = validate_directory(args.path)
+            sys.exit(0 if summary["invalid"] == 0 else 1)
+        
+        else:
+            print(f"❌ Error: '{args.path}' is neither a file nor directory")
+            sys.exit(1)
+            
+    except KeyboardInterrupt:
+        print("\n❌ Validation interrupted by user")
+        sys.exit(1)
+    except Exception as e:
+        print(f"❌ Unexpected error: {e}")
         sys.exit(1)
 
 

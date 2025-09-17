@@ -1,8 +1,8 @@
 """
-Utility functions for SHMR calculations and manipulations.
+Utility functions for SHMR calculations and manipulations compatible with Galacticus.
 
 This module provides functions for calculating SHMR from parametric forms,
-interpolating between data points, and performing common transformations.
+interpolating between data points, and creating Galacticus-compatible datasets.
 """
 
 import numpy as np
@@ -10,33 +10,62 @@ from scipy import interpolate
 from typing import Union, Callable, Optional, Tuple, Dict, Any
 from dataclasses import dataclass
 
-from .data_format import SHMRData, SHMRMetadata
+from .data_format import (
+    GalacticusSHMRData, 
+    RedshiftInterval, 
+    GalacticusCosmology,
+    create_example_cosmology
+)
 
 
 def calculate_shmr(
     halo_masses: np.ndarray,
     shmr_function: Union[str, Callable],
     parameters: Dict[str, float],
+    redshift: float = 0.0,
+    redshift_width: float = 0.1,
+    cosmology: Optional[GalacticusCosmology] = None,
+    halo_mass_definition: str = "virial",
+    label: str = "SHMR",
+    reference: str = "Generated SHMR",
+    scatter: Optional[np.ndarray] = None,
+    stellar_mass_errors: Optional[np.ndarray] = None,
     **kwargs
-) -> SHMRData:
+) -> GalacticusSHMRData:
     """
-    Calculate SHMR from a parametric function.
+    Calculate SHMR from a parametric function in Galacticus format.
     
-    Parameters:
-    -----------
+    Parameters
+    ----------
     halo_masses : array_like
-        Array of halo masses to evaluate SHMR at
+        Array of halo masses to evaluate SHMR at (in M☉)
     shmr_function : str or callable
         Either a string specifying a known SHMR form or a custom function
     parameters : dict
         Parameters for the SHMR function
+    redshift : float, optional
+        Central redshift for the relation (default: 0.0)
+    redshift_width : float, optional
+        Width of redshift interval (default: 0.1)
+    cosmology : GalacticusCosmology, optional
+        Cosmological parameters (default: Planck 2018)
+    halo_mass_definition : str, optional
+        Halo mass definition (default: "virial")
+    label : str, optional
+        Dataset label (default: "SHMR")
+    reference : str, optional
+        Reference for the relation (default: "Generated SHMR")
+    scatter : array_like, optional
+        Intrinsic scatter in stellar mass in dex (default: 0.3 dex)
+    stellar_mass_errors : array_like, optional
+        Observational errors in stellar mass (default: 0.1 dex)
     **kwargs
-        Additional metadata fields
+        Additional parameters passed to SHMR function
         
-    Returns:
-    --------
-    SHMRData
-        Calculated SHMR data with metadata
+    Returns
+    -------
+    GalacticusSHMRData
+        Calculated SHMR data in Galacticus format
     """
     halo_masses = np.asarray(halo_masses)
     
@@ -54,63 +83,87 @@ def calculate_shmr(
     else:
         stellar_masses = shmr_function(halo_masses, **parameters)
     
-    # Create metadata
-    metadata_dict = {
-        "name": kwargs.get("name", f"Calculated SHMR ({shmr_function})"),
-        "version": kwargs.get("version", "1.0"),
-        "description": kwargs.get("description", f"SHMR calculated using {shmr_function} parametrization"),
-        "source_type": "theory",
-        "reference": kwargs.get("reference", ""),
-        "creation_method": "calculation",
-        "creation_date": kwargs.get("creation_date", ""),
-        "created_by": kwargs.get("created_by", ""),
-    }
+    # Set default cosmology if not provided
+    if cosmology is None:
+        cosmology = create_example_cosmology()
     
-    # Add any additional metadata
-    for key, value in kwargs.items():
-        if key not in metadata_dict:
-            metadata_dict[key] = value
+    # Set default scatter and errors if not provided
+    if scatter is None:
+        scatter = np.full(len(halo_masses), 0.3)  # 0.3 dex default scatter
+    else:
+        scatter = np.asarray(scatter)
+        if scatter.shape != halo_masses.shape:
+            scatter = np.full(len(halo_masses), scatter.item() if scatter.size == 1 else scatter)
     
-    metadata = SHMRMetadata(**metadata_dict)
+    if stellar_mass_errors is None:
+        stellar_mass_errors = np.full(len(halo_masses), 0.1)  # 0.1 dex default error
+    else:
+        stellar_mass_errors = np.asarray(stellar_mass_errors)
+        if stellar_mass_errors.shape != halo_masses.shape:
+            stellar_mass_errors = np.full(len(halo_masses), stellar_mass_errors.item() if stellar_mass_errors.size == 1 else stellar_mass_errors)
     
-    return SHMRData(
-        halo_mass=halo_masses,
-        stellar_mass=stellar_masses,
-        metadata=metadata
+    # Default scatter errors (typically much smaller)
+    scatter_errors = np.full(len(halo_masses), 0.05)  # 0.05 dex scatter error
+    
+    # Create redshift interval
+    redshift_interval = RedshiftInterval(
+        massHalo=halo_masses,
+        massStellar=stellar_masses,
+        massStellarError=stellar_mass_errors,
+        massStellarScatter=scatter,
+        massStellarScatterError=scatter_errors,
+        redshiftMinimum=redshift - redshift_width/2,
+        redshiftMaximum=redshift + redshift_width/2
+    )
+    
+    return GalacticusSHMRData(
+        redshift_intervals=[redshift_interval],
+        cosmology=cosmology,
+        haloMassDefinition=halo_mass_definition,
+        label=label,
+        reference=reference
     )
 
 
 def interpolate_shmr(
-    shmr_data: SHMRData,
+    shmr_data: GalacticusSHMRData,
     new_halo_masses: np.ndarray,
+    redshift_interval_index: int = 0,
     method: str = "linear",
     extrapolate: bool = False
-) -> SHMRData:
+) -> GalacticusSHMRData:
     """
-    Interpolate SHMR to new halo mass points.
+    Interpolate SHMR to new halo mass points for Galacticus format.
     
-    Parameters:
-    -----------
-    shmr_data : SHMRData
+    Parameters
+    ----------
+    shmr_data : GalacticusSHMRData
         Original SHMR data
     new_halo_masses : array_like
         New halo masses to interpolate to
-    method : str
+    redshift_interval_index : int, optional
+        Index of redshift interval to interpolate (default: 0)
+    method : str, optional
         Interpolation method ("linear", "cubic", "log-linear")
-    extrapolate : bool
+    extrapolate : bool, optional
         Whether to allow extrapolation beyond original data range
         
-    Returns:
-    --------
-    SHMRData
-        Interpolated SHMR data
+    Returns
+    -------
+    GalacticusSHMRData
+        Interpolated SHMR data in Galacticus format
     """
     new_halo_masses = np.asarray(new_halo_masses)
     
+    if redshift_interval_index >= len(shmr_data.redshift_intervals):
+        raise ValueError(f"Redshift interval index {redshift_interval_index} out of range")
+    
+    interval = shmr_data.redshift_intervals[redshift_interval_index]
+    
     if method == "log-linear":
         # Interpolate in log space
-        log_halo = np.log10(shmr_data.halo_mass)
-        log_stellar = np.log10(shmr_data.stellar_mass)
+        log_halo = np.log10(interval.massHalo)
+        log_stellar = np.log10(interval.massStellar)
         log_new_halo = np.log10(new_halo_masses)
         
         interp_func = interpolate.interp1d(
@@ -124,7 +177,7 @@ def interpolate_shmr(
         
     else:
         interp_func = interpolate.interp1d(
-            shmr_data.halo_mass, shmr_data.stellar_mass,
+            interval.massHalo, interval.massStellar,
             kind=method,
             bounds_error=not extrapolate,
             fill_value="extrapolate" if extrapolate else np.nan
@@ -132,18 +185,44 @@ def interpolate_shmr(
         
         new_stellar_masses = interp_func(new_halo_masses)
     
-    # Create new metadata
-    new_metadata = SHMRMetadata(**{
-        **shmr_data.metadata.__dict__,
-        "name": f"{shmr_data.metadata.name} (interpolated)",
-        "description": f"{shmr_data.metadata.description} - Interpolated using {method} method",
-        "creation_method": "interpolation"
-    })
+    # Interpolate other quantities
+    error_interp = interpolate.interp1d(
+        interval.massHalo, interval.massStellarError,
+        kind="linear", bounds_error=not extrapolate,
+        fill_value="extrapolate" if extrapolate else np.nan
+    )
+    scatter_interp = interpolate.interp1d(
+        interval.massHalo, interval.massStellarScatter,
+        kind="linear", bounds_error=not extrapolate,
+        fill_value="extrapolate" if extrapolate else np.nan
+    )
+    scatter_error_interp = interpolate.interp1d(
+        interval.massHalo, interval.massStellarScatterError,
+        kind="linear", bounds_error=not extrapolate,
+        fill_value="extrapolate" if extrapolate else np.nan
+    )
     
-    return SHMRData(
-        halo_mass=new_halo_masses,
-        stellar_mass=new_stellar_masses,
-        metadata=new_metadata
+    new_errors = error_interp(new_halo_masses)
+    new_scatter = scatter_interp(new_halo_masses)
+    new_scatter_errors = scatter_error_interp(new_halo_masses)
+    
+    # Create new redshift interval
+    new_interval = RedshiftInterval(
+        massHalo=new_halo_masses,
+        massStellar=new_stellar_masses,
+        massStellarError=new_errors,
+        massStellarScatter=new_scatter,
+        massStellarScatterError=new_scatter_errors,
+        redshiftMinimum=interval.redshiftMinimum,
+        redshiftMaximum=interval.redshiftMaximum
+    )
+    
+    return GalacticusSHMRData(
+        redshift_intervals=[new_interval],
+        cosmology=shmr_data.cosmology,
+        haloMassDefinition=shmr_data.haloMassDefinition,
+        label=f"{shmr_data.label}_interpolated",
+        reference=f"{shmr_data.reference} (interpolated using {method} method)"
     )
 
 
@@ -391,31 +470,39 @@ def convert_units(
 
 
 def calculate_stellar_mass_function(
-    shmr_data: SHMRData,
+    shmr_data: GalacticusSHMRData,
     halo_mass_function: Callable,
-    log_mass_bins: np.ndarray
+    log_mass_bins: np.ndarray,
+    redshift_interval_index: int = 0
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Calculate stellar mass function from SHMR and halo mass function.
     
-    Parameters:
-    -----------
-    shmr_data : SHMRData
-        SHMR data
+    Parameters
+    ----------
+    shmr_data : GalacticusSHMRData
+        SHMR data in Galacticus format
     halo_mass_function : callable
         Function that takes halo mass and returns dn/dlog(Mh)
     log_mass_bins : array_like
         Stellar mass bins (log10)
+    redshift_interval_index : int, optional
+        Index of redshift interval to use (default: 0)
         
-    Returns:
-    --------
+    Returns
+    -------
     tuple
         (stellar_mass_centers, number_density)
     """
+    if redshift_interval_index >= len(shmr_data.redshift_intervals):
+        raise ValueError(f"Redshift interval index {redshift_interval_index} out of range")
+    
+    interval = shmr_data.redshift_intervals[redshift_interval_index]
+    
     # Create interpolation function for SHMR
     shmr_interp = interpolate.interp1d(
-        np.log10(shmr_data.halo_mass),
-        np.log10(shmr_data.stellar_mass),
+        np.log10(interval.massHalo),
+        np.log10(interval.massStellar),
         kind='linear',
         bounds_error=False,
         fill_value=np.nan
