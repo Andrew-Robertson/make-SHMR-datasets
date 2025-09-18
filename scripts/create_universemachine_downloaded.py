@@ -15,6 +15,9 @@ import urllib.request
 import gzip
 from pathlib import Path
 from io import StringIO
+import os
+import tarfile
+import urllib.request
 
 # Add the src directory to Python path
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
@@ -48,82 +51,130 @@ def download_universemachine_data():
     UniverseMachine data files. For this example, we'll create synthetic
     data that matches the UniverseMachine format and methodology.
     """
+
+    url = "https://halos.as.arizona.edu/UniverseMachine/DR1/umachine-dr1.tar.gz"
+    tarball = "umachine-dr1.tar.gz"
+    extract_dir = "../data/simulations/universemachine"
+    target_subdir = os.path.join(extract_dir, "umachine-dr1", "data", "smhm")
+
+    if not os.path.exists(target_subdir):
+        print("Downloading UniverseMachine SHMR data...")
+        # Ensure destination directory exists
+        os.makedirs(extract_dir, exist_ok=True)
+
+        # Download tarball if not already present
+        if not os.path.exists(tarball):
+            print(f"Downloading {url} ...")
+            urllib.request.urlretrieve(url, tarball)
+
+        # Extract only the median_fits subdirectory into extract_dir
+        with tarfile.open(tarball, "r:gz") as tar:
+            members = [m for m in tar.getmembers()
+                    if m.name.startswith("umachine-dr1/data/smhm/")]
+            tar.extractall(path=extract_dir, members=members)
+
+        print(f"Extracted {len(members)} files under {extract_dir}/umachine-dr1/data/smhm/")
+
+        # Remove tarball to save space
+        os.remove(tarball)
+        print(f"Deleted {tarball}")
     
-    print("Downloading UniverseMachine SHMR data...")
-    print("(Note: Creating synthetic data for demonstration)")
-    
-    # In a real implementation, you would download from:
-    # https://bitbucket.org/pbehroozi/universemachine/raw/main/data/
-    
-    # For this example, we'll create synthetic data that represents
-    # the kind of SHMR data you would get from UniverseMachine
-    
-    # Define halo mass range
-    log_mh_range = np.linspace(10.5, 15.0, 51)
-    halo_masses = 10**log_mh_range
-    
-    # Create synthetic SHMR data similar to UniverseMachine results
-    # These parameters approximate the UniverseMachine central galaxy SHMR
-    redshift_data = []
-    
-    # Define redshift bins 
-    z_bins = [
-        (0.0, 0.5),      # Low redshift
-        (0.5, 1.0),      # Medium redshift
-        (1.0, 2.0)       # High redshift
-    ]
-    
-    for z_min, z_max in z_bins:
-        z_mid = (z_min + z_max) / 2
-        
-        # UniverseMachine-like parametrization (simplified)
-        # These are approximate fits to actual UniverseMachine data
-        log_m1 = 12.0 + 0.15 * z_mid  # Characteristic mass evolves
-        ms0 = 10.5 - 0.2 * z_mid      # Normalization evolves
-        alpha = -1.8 + 0.1 * z_mid    # Low-mass slope
-        beta = 0.5 - 0.05 * z_mid     # High-mass slope
-        
-        # Calculate stellar masses using double power law approximation
-        x = log_mh_range - log_m1
-        log_stellar = ms0 + alpha * x / (1 + 10**(-beta * x))
-        stellar_masses = 10**log_stellar
-        
-        # Add observational uncertainties (typical for SHMR studies)
-        # These represent the typical scatter and errors in observations
-        stellar_errors = 0.1 * stellar_masses  # 10% fractional error
-        stellar_scatter = np.full(len(halo_masses), 0.15 + 0.05 * z_mid)  # 0.15-0.25 dex
-        scatter_errors = np.full(len(halo_masses), 0.03)  # 0.03 dex error on scatter
-        
-        redshift_data.append({
-            'z_min': z_min,
-            'z_max': z_max,
-            'halo_masses': halo_masses,
-            'stellar_masses': stellar_masses,
-            'stellar_errors': stellar_errors,
-            'stellar_scatter': stellar_scatter,
-            'scatter_errors': scatter_errors
-        })
-    
-    return redshift_data
+    ##### /home/arobertson/Galacticus/make-SHMR-datasets/data/simulations/universemachine/umachine-dr1/data/smhm/params/gen_smhm_uncertainties.py is a script to create the SHMR and its uncertainty from a file describing the sample (which cotnains some parameters that were fit). Let;s use this. Though presumably not here. This should just be loading data, then the function below builds that SHMR files.
+    return extract_dir
 
 
-def create_universemachine_shmr():
+
+def create_universemachine_shmr(sample="True_Cen", measurement="median_raw"):
     """
-    Create SHMR dataset from UniverseMachine data.
-    
-    This processes the downloaded UniverseMachine data and creates
-    a Galacticus-compatible HDF5 file.
+    Create a Stellar Halo Mass Relation (SHMR) dataset from UniverseMachine data.
+    This function processes the downloaded UniverseMachine data to create a 
+    Galacticus-compatible HDF5 file containing the SHMR dataset. It retrieves 
+    data from specified files, calculates redshift intervals, and constructs 
+    RedshiftInterval objects for each interval.
+    Parameters:
+        sample (str): The type of sample to use. Default is "True_Cen".
+                      Other samples may be implemented in the future.
+        measurement (str): The type of measurement to process. Currently, 
+                           only "median_raw" is supported. "median_fits" 
+                           is not yet implemented due to lack of recorded scatter.
+    Returns:
+        GalacticusSHMRData: An object containing the SHMR dataset, which includes 
+                             redshift intervals and associated stellar and halo mass 
+                             data, along with cosmological parameters.
+    Notes:
+        - The function expects the UniverseMachine data to be downloaded and 
+          available in a specific directory structure.
+        - The function handles symmetric errors for stellar mass calculations 
+          and averages the errors from the scatter data.
+        - The redshift intervals are calculated based on the scale factors 
+          derived from the filenames of the data files.
     """
     
     # Download/create the data
-    data = download_universemachine_data()
+    extract_dir = download_universemachine_data()
+    print(f"Using UniverseMachine data from: {extract_dir}")
+    # Load the scale factors and convert to redshifts
+    scale_factors = []
     
+    umachine_data_dir = os.path.join(extract_dir, "umachine-dr1/data/smhm", measurement)
+    for filename in os.listdir(umachine_data_dir):
+        if filename.startswith("smhm_a") and filename.endswith(".dat"):
+            scale_factor = float(filename.split('_')[1].split('.d')[0][1:])
+            scale_factors.append(scale_factor)
+    scale_factors = np.array(sorted(scale_factors))[::-1] # Sort and reverse to have low-z to high-z        
+    redshifts = 1 / scale_factors - 1
+    print("Redshifts found:")
+    for z in redshifts:
+        print(f"z = {z:.4f}")
     # Create redshift intervals
     redshift_intervals = []
     
-    for i, interval_data in enumerate(data):
-        print(f"Processing redshift interval {i+1}: z={interval_data['z_min']:.1f}-{interval_data['z_max']:.1f}")
+    for i,z in enumerate(redshifts):
+        # Define z_min and z_max for the interval
+        z_min = (redshifts[i - 1] + z) / 2 if i > 0 else max(0, z - 0.5*(redshifts[i + 1] - z))  # Calculate z_min based on spacing
+        z_max = (redshifts[i + 1] + z) / 2 if i < len(redshifts)-1 else z + 0.5*(z - redshifts[i - 1])  # Calculate z_max based on spacing
+
+        interval_data = {
+            'z_min': z_min,
+            'z_max': z_max,
+            'halo_masses': [],
+            'stellar_masses': [],
+            'stellar_errors': [],
+            'stellar_scatter': [],
+            'scatter_errors': []
+        }
         
+        print(f"Processing redshift interval {i+1}: z={interval_data['z_min']:.2f}-{interval_data['z_max']:.2f}")
+        
+        # Load corresponding smhm and smhm_scatter files
+        smhm_file = os.path.join(umachine_data_dir, f"smhm_a{1/(1+z):.6f}.dat")
+        smhm_scatter_file = os.path.join(umachine_data_dir, f"smhm_scatter_a{1/(1+z):.6f}.dat")
+
+        if sample=="True_Cen":
+            sample_column = 25 # these are listed in the header if we want to extend to other samples
+        usecols = (0, sample_column, sample_column+1, sample_column+2) 
+        
+        # Read data from smhm file
+        if os.path.exists(smhm_file):
+            data = np.loadtxt(smhm_file, usecols=usecols, unpack=True)
+            log10halo_mass, log10stellar_mass_ratio, err_plus_dex, err_minus_dex = data
+            err_dex = (err_plus_dex + err_minus_dex) / 2 # symmetric error in dex
+            interval_data['halo_masses'].extend(10**log10halo_mass)  # Convert log10 to actual mass
+            interval_data['stellar_masses'].extend(10**(log10halo_mass + log10stellar_mass_ratio))  # Mstar = Mhalo * (Mstar/Mhalo)
+            interval_data['stellar_errors'].extend(np.array(interval_data['stellar_masses']) * np.log(10) * err_dex)  # Approximate error on Mstar, from error on log10(Mstar)
+        else:
+            print(f"Warning: {smhm_file} does not exist.")
+            
+        # Read data from smhm_scatter file
+        if os.path.exists(smhm_scatter_file):
+            scatter_data = np.loadtxt(smhm_scatter_file, usecols=usecols, unpack=True)
+            _, scatter, scatter_err_plus, scatter_err_minus = scatter_data # already in dex as expected by Galacticus
+            interval_data['stellar_scatter'].extend(scatter)
+            interval_data['scatter_errors'].extend((scatter_err_plus + scatter_err_minus) / 2)  # Average errors
+        else:
+            print(f"Warning: {smhm_scatter_file} does not exist.")
+        
+        # generate the RedshiftInterval object 
         interval = RedshiftInterval(
             massHalo=interval_data['halo_masses'],
             massStellar=interval_data['stellar_masses'],
