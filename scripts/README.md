@@ -1,6 +1,33 @@
 # Example Scripts
 
-This directory contains example scripts demonstrating how to create SHMR datasets in Galacticus format.
+This directory contains example scripts demonstrating how to create and analyze SHMR datasets in Galacticus format.
+
+## Plotting and Analysis Scripts
+
+### `plot_shmr_comparison.py`
+Comprehensive SHMR comparison tool that plots all available datasets at z≈0.1, z≈1, and z≈2.
+
+**Features:**
+- Automatically finds best-matching redshift intervals for each dataset
+- Creates side-by-side comparison plots with error bars
+- Provides dataset summary with redshift coverage
+- Handles missing data gracefully
+- Outputs high-resolution PNG for analysis
+
+**Usage:**
+```bash
+python scripts/plot_shmr_comparison.py
+```
+
+**Output:** 
+- Console summary of all datasets
+- `shmr_comparison.png` - comparison plot saved to current directory
+
+This tool is perfect for:
+- Visual quality control of SHMR datasets
+- Identifying anomalies or inconsistencies
+- Comparing theoretical models vs simulations
+- Verifying parameter uncertainty propagation results
 
 ## Parametric Model Example
 
