@@ -23,28 +23,47 @@ def propagate_parameter_uncertainties(
     shmr_function: Union[str, Callable],
     parameters: Dict[str, float],
     parameter_errors: Dict[str, float],
-    n_samples: int = 100
+    redshift: float = 0.0,
+    n_samples: int = 100,
+    **kwargs
 ) -> np.ndarray:
     """
     Estimate stellar mass uncertainties by propagating parameter uncertainties.
     
+    Uses Monte Carlo sampling to propagate uncertainties in SHMR parameters
+    to uncertainties in the predicted stellar masses.
+    
     Parameters
     ----------
     halo_masses : array_like
-        Array of halo masses
+        Array of halo masses in M☉
     shmr_function : str or callable  
         SHMR function name or callable
     parameters : dict
         Best-fit parameter values
     parameter_errors : dict
-        1-sigma uncertainties on parameters
-    n_samples : int
-        Number of Monte Carlo samples for uncertainty propagation
+        1-sigma uncertainties on parameters (same keys as parameters)
+    redshift : float, optional
+        Redshift for redshift-dependent SHMR functions (default: 0.0)
+    n_samples : int, optional
+        Number of Monte Carlo samples for uncertainty propagation (default: 100)
+    **kwargs
+        Additional parameters passed to SHMR function
         
     Returns
     -------
     np.ndarray
-        Standard deviation of stellar masses from parameter uncertainties
+        Standard deviation of stellar masses from parameter uncertainties in M☉
+        
+    Examples
+    --------
+    >>> import numpy as np
+    >>> halo_masses = np.logspace(11, 13, 10)
+    >>> params = {'logMstar00': 10.72, 'logM10': 12.35, 'beta0': 0.43}
+    >>> param_errors = {'logMstar00': 0.05, 'logM10': 0.1, 'beta0': 0.02}
+    >>> errors = propagate_parameter_uncertainties(
+    ...     halo_masses, 'behroozi2010', params, param_errors, redshift=1.0
+    ... )
     """
     stellar_masses_samples = []
     
@@ -60,19 +79,19 @@ def propagate_parameter_uncertainties(
         # Calculate stellar masses with sampled parameters
         if isinstance(shmr_function, str):
             if shmr_function == "behroozi2010":
-                stellar_masses = behroozi2010_shmr(halo_masses, **sampled_params)
+                stellar_masses = behroozi2010_shmr(halo_masses, redshift=redshift, **sampled_params, **kwargs)
             elif shmr_function == "behroozi2013":
-                stellar_masses = behroozi2013_shmr(halo_masses, **sampled_params)
+                stellar_masses = behroozi2013_shmr(halo_masses, redshift=redshift, **sampled_params, **kwargs)
             elif shmr_function == "moster2013":
-                stellar_masses = moster2013_shmr(halo_masses, **sampled_params)
+                stellar_masses = moster2013_shmr(halo_masses, redshift=redshift, **sampled_params, **kwargs)
             elif shmr_function == "rodriguez_puebla2017":
-                stellar_masses = rodriguez_puebla2017_shmr(halo_masses, **sampled_params)
+                stellar_masses = rodriguez_puebla2017_shmr(halo_masses, redshift=redshift, **sampled_params, **kwargs)
             elif shmr_function == "double_powerlaw":
-                stellar_masses = double_powerlaw_shmr(halo_masses, **sampled_params)
+                stellar_masses = double_powerlaw_shmr(halo_masses, redshift=redshift, **sampled_params, **kwargs)
             else:
                 raise ValueError(f"Unknown SHMR function: {shmr_function}")
         else:
-            stellar_masses = shmr_function(halo_masses, **sampled_params)
+            stellar_masses = shmr_function(halo_masses, redshift=redshift, **sampled_params, **kwargs)
             
         stellar_masses_samples.append(stellar_masses)
     
@@ -145,19 +164,19 @@ def calculate_shmr(
 
     if isinstance(shmr_function, str):
         if shmr_function == "behroozi2010":
-            stellar_masses = behroozi2010_shmr(halo_masses, **parameters)
+            stellar_masses = behroozi2010_shmr(halo_masses, redshift=redshift, **parameters, **kwargs)
         elif shmr_function == "behroozi2013":
-            stellar_masses = behroozi2013_shmr(halo_masses, **parameters)
+            stellar_masses = behroozi2013_shmr(halo_masses, redshift=redshift, **parameters, **kwargs)
         elif shmr_function == "moster2013":
-            stellar_masses = moster2013_shmr(halo_masses, **parameters)
+            stellar_masses = moster2013_shmr(halo_masses, redshift=redshift, **parameters, **kwargs)
         elif shmr_function == "rodriguez_puebla2017":
-            stellar_masses = rodriguez_puebla2017_shmr(halo_masses, **parameters)
+            stellar_masses = rodriguez_puebla2017_shmr(halo_masses, redshift=redshift, **parameters, **kwargs)
         elif shmr_function == "double_powerlaw":
-            stellar_masses = double_powerlaw_shmr(halo_masses, **parameters)
+            stellar_masses = double_powerlaw_shmr(halo_masses, redshift=redshift, **parameters, **kwargs)
         else:
             raise ValueError(f"Unknown SHMR function: {shmr_function}")
     else:
-        stellar_masses = shmr_function(halo_masses, **parameters)
+        stellar_masses = shmr_function(halo_masses, redshift=redshift, **parameters, **kwargs)
     
     # Set default cosmology if not provided
     if cosmology is None:
@@ -174,9 +193,10 @@ def calculate_shmr(
     if stellar_mass_errors is None:
         # Try to use parameter uncertainties if available
         if parameter_errors is not None and parameters is not None:
-            print("Using parameter uncertainty propagation for stellar mass errors...")
+            print("Using Monte Carlo parameter uncertainty propagation...")
             stellar_mass_errors = propagate_parameter_uncertainties(
-                halo_masses, shmr_function, parameters, parameter_errors
+                halo_masses, shmr_function, parameters, parameter_errors, 
+                redshift=redshift, **kwargs
             )
         else:
             # Default: 10% fractional error in M☉ (not dex!)
