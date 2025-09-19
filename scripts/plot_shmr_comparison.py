@@ -92,7 +92,6 @@ def plot_shmr_comparison():
     # Define files to compare
     files = [
         'data/theory/behroozi2010/behroozi2010_parametric.hdf5',
-        'data/theory/behroozi2013/behroozi2013_z0_galacticus.hdf5', 
         'data/theory/moster2013/moster2013_z0_galacticus.hdf5',
         'data/simulations/universemachine/universemachine_downloaded.hdf5'
     ]
@@ -186,7 +185,6 @@ def print_dataset_summary():
     
     files = [
         'data/theory/behroozi2010/behroozi2010_parametric.hdf5',
-        'data/theory/behroozi2013/behroozi2013_z0_galacticus.hdf5', 
         'data/theory/moster2013/moster2013_z0_galacticus.hdf5',
         'data/simulations/universemachine/universemachine_downloaded.hdf5'
     ]

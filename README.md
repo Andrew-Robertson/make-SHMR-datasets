@@ -74,7 +74,7 @@ from shmr_datasets import (
 import numpy as np
 
 # Load an existing Galacticus-format dataset
-shmr_data = load_galacticus_shmr("data/theory/behroozi2013/behroozi2013_z0_galacticus.hdf5")
+shmr_data = load_galacticus_shmr("data/theory/behroozi2010/behroozi2010_parametric.hdf5")
 
 # Access data
 interval = shmr_data.redshift_intervals[0]  # First redshift interval
@@ -88,13 +88,13 @@ print(f"Halo mass definition: {shmr_data.haloMassDefinition}")
 halo_masses = np.logspace(10, 15, 100)
 calculated_shmr = calculate_shmr(
     halo_masses=halo_masses,
-    shmr_function="behroozi2013",
-    parameters={"log_m1": 12.35, "ms0": 10.72, "beta": 0.44, "delta": 0.57, "gamma": 1.56},
+    shmr_function="behroozi2010",
+    parameters={"logMstar00": 10.72, "logM10": 12.35, "beta0": 0.43, "delta0": 0.56, "gamma0": 1.54},
     redshift=0.0,
     cosmology=create_example_cosmology(),
     halo_mass_definition="virial",
-    label="Behroozi2013",
-    reference="Behroozi et al. (2013)"
+    label="Behroozi2010",
+    reference="Behroozi et al. (2010)"
 )
 
 # Save in Galacticus format
@@ -144,7 +144,7 @@ The package includes implementations of several common SHMR parametrizations:
 The repository includes validated example datasets:
 
 - **Behroozi et al. 2010**: `data/theory/behroozi2010/behroozi2010_parametric.hdf5` (parametric model)
-- **Behroozi et al. 2013**: `data/theory/behroozi2013/behroozi2013_z0_galacticus.hdf5`
+
 - **Moster et al. 2013**: `data/theory/moster2013/moster2013_z0_galacticus.hdf5`
 - **UniverseMachine**: `data/simulations/universemachine/universemachine_downloaded.hdf5` (downloaded data)
 

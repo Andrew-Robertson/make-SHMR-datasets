@@ -106,7 +106,7 @@ class GalacticusSHMRData:
     haloMassDefinition : str
         Halo mass definition (e.g., "virial", "200 * critical density")
     label : str
-        Space-free label for the dataset (e.g., "Behroozi2013")
+        Space-free label for the dataset (e.g., "Behroozi2010")
     reference : str
         Reference citation for figures (e.g., "Behroozi et al. (2013)")
     """
