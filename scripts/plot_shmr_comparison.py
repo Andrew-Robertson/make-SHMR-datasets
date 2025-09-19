@@ -91,20 +91,22 @@ def plot_shmr_comparison():
     
     # Define files to compare
     files = [
-        'data/theory/behroozi2010/behroozi2010_parametric.hdf5',
-        'data/theory/behroozi2013/behroozi2013_z0_galacticus.hdf5', 
-        'data/theory/moster2013/moster2013_z0_galacticus.hdf5',
-        'data/simulations/universemachine/universemachine_downloaded.hdf5'
+        '../data/theory/behroozi2010/behroozi2010_parametric.hdf5',
+        '../data/theory/behroozi2013/behroozi2013_z0_galacticus.hdf5', 
+        '../data/theory/moster2013/moster2013_z0_galacticus.hdf5',
+        '../data/simulations/universemachine/universemachine_downloaded.hdf5'
     ]
     
     # Target redshifts for comparison
     target_redshifts = [0.1, 1.0, 2.0]
     
     # Create figure with subplots
-    fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+    fig, axes = plt.subplots(1, len(target_redshifts), figsize=(18, 6))
     fig.suptitle('SHMR Dataset Comparison', fontsize=16, fontweight='bold')
     
-    colors = ['blue', 'red', 'green', 'orange', 'purple', 'brown']
+    N = len(files)
+    cmap = plt.get_cmap('tab10' if N <= 10 else 'hsv', N)
+    colors = [cmap(i) for i in range(N)]
     
     for i, target_z in enumerate(target_redshifts):
         ax = axes[i]
@@ -112,10 +114,9 @@ def plot_shmr_comparison():
         print(f"\\nPlotting SHMR at z ≈ {target_z}:")
         print("-" * 40)
         
-        color_idx = 0
         datasets_plotted = 0
         
-        for filepath in files:
+        for j,filepath in enumerate(files):
             if not Path(filepath).exists():
                 print(f"  Skipping {filepath} (file not found)")
                 continue
@@ -127,7 +128,7 @@ def plot_shmr_comparison():
                 continue
                 
             # Plot the SHMR
-            color = colors[color_idx % len(colors)]
+            color = colors[j]
             
             ax.errorbar(
                 shmr_data['halo_masses'], 
@@ -146,7 +147,6 @@ def plot_shmr_comparison():
                   f"(range: {shmr_data['redshift_range'][0]:.2f}-{shmr_data['redshift_range'][1]:.2f}), "
                   f"{len(shmr_data['halo_masses'])} points")
             
-            color_idx += 1
             datasets_plotted += 1
         
         # Formatting
