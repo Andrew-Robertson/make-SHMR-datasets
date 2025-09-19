@@ -9,6 +9,7 @@ This serves as an example of creating datasets from theoretical/parametric model
 """
 
 import numpy as np
+import sys
 from pathlib import Path
 
 from shmr_datasets import (

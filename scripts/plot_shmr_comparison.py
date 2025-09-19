@@ -82,11 +82,12 @@ def load_shmr_at_redshift(filepath, target_redshift, tolerance=0.15):
         print(f"Error reading {filepath}: {e}")
         return None
 
-# Define files to compare
+# Define files to compare (using paths relative to repository root)
+repo_root = Path(__file__).parent.parent
 files = [
-    'data/theory/behroozi2010/behroozi2010_parametric.hdf5',
-    'data/theory/moster2013/moster2013_z0_galacticus.hdf5',
-    'data/simulations/universemachine/universemachine_downloaded.hdf5'
+    repo_root / 'data' / 'theory' / 'behroozi2010' / 'behroozi2010_parametric.hdf5',
+    repo_root / 'data' / 'theory' / 'moster2013' / 'moster2013_z0_galacticus.hdf5',
+    repo_root / 'data' / 'simulations' / 'universemachine' / 'universemachine_downloaded.hdf5'
 ]
 
 def plot_shmr_comparison():
@@ -165,8 +166,8 @@ def plot_shmr_comparison():
     
     plt.tight_layout()
     
-    # Save the plot
-    output_file = 'shmr_comparison.png'
+    # Save the plot in current working directory
+    output_file = Path.cwd() / 'shmr_comparison.png'
     plt.savefig(output_file, dpi=300, bbox_inches='tight')
     print(f"\\n📊 Comparison plot saved as: {output_file}")
     

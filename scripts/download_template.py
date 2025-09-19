@@ -84,8 +84,8 @@ def main():
     print("SHMR Data Download Script")
     print("=" * 40)
     
-    # Create output directory
-    output_dir = Path("../data/observations/example_dataset")
+    # Create output directory using repository-relative path
+    output_dir = Path(__file__).parent.parent / "data" / "observations" / "example_dataset"
     output_dir.mkdir(parents=True, exist_ok=True)
     
     try:
