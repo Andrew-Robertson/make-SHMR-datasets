@@ -9,7 +9,6 @@ Repository: https://bitbucket.org/pbehroozi/universemachine/src/main/
 This serves as an example of creating datasets from downloaded observational/simulation data.
 """
 
-import sys
 import numpy as np
 import urllib.request
 import gzip
@@ -20,8 +19,9 @@ import tarfile
 import urllib.request
 
 # Add the src directory to Python path
-sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
+from shmr_datasets import (
 
+# Add the src directory to Python path
 from shmr_datasets import (
     save_galacticus_shmr, 
     GalacticusCosmology,

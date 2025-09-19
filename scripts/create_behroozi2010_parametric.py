@@ -8,12 +8,8 @@ Behroozi et al. 2010, ApJ, 717, 379 (arXiv:1001.0015)
 This serves as an example of creating datasets from theoretical/parametric models.
 """
 
-import sys
 import numpy as np
 from pathlib import Path
-
-# Add the src directory to Python path
-sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
 from shmr_datasets import (
     calculate_shmr, 

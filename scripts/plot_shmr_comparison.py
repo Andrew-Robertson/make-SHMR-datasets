@@ -10,10 +10,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import h5py
 from pathlib import Path
-import sys
-
-# Add the src directory to Python path
-sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
 def load_shmr_at_redshift(filepath, target_redshift, tolerance=0.15):
     """
@@ -88,9 +84,9 @@ def load_shmr_at_redshift(filepath, target_redshift, tolerance=0.15):
 
 # Define files to compare
 files = [
-    '../data/theory/behroozi2010/behroozi2010_parametric.hdf5',
-    '../data/theory/moster2013/moster2013_z0_galacticus.hdf5',
-    '../data/simulations/universemachine/universemachine_downloaded.hdf5'
+    'data/theory/behroozi2010/behroozi2010_parametric.hdf5',
+    'data/theory/moster2013/moster2013_z0_galacticus.hdf5',
+    'data/simulations/universemachine/universemachine_downloaded.hdf5'
 ]
 
 def plot_shmr_comparison():
