@@ -86,16 +86,15 @@ def load_shmr_at_redshift(filepath, target_redshift, tolerance=0.15):
         print(f"Error reading {filepath}: {e}")
         return None
 
+# Define files to compare
+files = [
+    '../data/theory/behroozi2010/behroozi2010_parametric.hdf5',
+    '../data/theory/moster2013/moster2013_z0_galacticus.hdf5',
+    '../data/simulations/universemachine/universemachine_downloaded.hdf5'
+]
+
 def plot_shmr_comparison():
     """Create comparison plots of SHMR datasets at different redshifts."""
-    
-    # Define files to compare
-    files = [
-        '../data/theory/behroozi2010/behroozi2010_parametric.hdf5',
-        '../data/theory/behroozi2013/behroozi2013_z0_galacticus.hdf5', 
-        '../data/theory/moster2013/moster2013_z0_galacticus.hdf5',
-        '../data/simulations/universemachine/universemachine_downloaded.hdf5'
-    ]
     
     # Target redshifts for comparison
     target_redshifts = [0.1, 1.0, 2.0]
@@ -183,12 +182,6 @@ def plot_shmr_comparison():
 
 def print_dataset_summary():
     """Print a summary of all available datasets."""
-    
-    files = [
-        'data/theory/behroozi2010/behroozi2010_parametric.hdf5',
-        'data/theory/moster2013/moster2013_z0_galacticus.hdf5',
-        'data/simulations/universemachine/universemachine_downloaded.hdf5'
-    ]
     
     print("\\n" + "="*60)
     print("SHMR DATASET SUMMARY")
