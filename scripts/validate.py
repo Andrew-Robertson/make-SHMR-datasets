@@ -134,7 +134,7 @@ def main():
         epilog="""
 Examples:
   # Validate a single file
-  python validate.py data/theory/behroozi2013/behroozi2013_z0_galacticus.hdf5
+  python validate.py data/theory/behroozi2010/behroozi2010_parametric.hdf5
   
   # Validate all files in a directory
   python validate.py data/

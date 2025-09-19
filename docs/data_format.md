@@ -127,7 +127,7 @@ data/
 │   └── universemachine/
 └── theory/
     ├── behroozi2010/
-    ├── behroozi2013/
+
     └── moster2013/
 ```
 

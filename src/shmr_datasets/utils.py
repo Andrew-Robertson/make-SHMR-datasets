@@ -80,8 +80,7 @@ def propagate_parameter_uncertainties(
         if isinstance(shmr_function, str):
             if shmr_function == "behroozi2010":
                 stellar_masses = behroozi2010_shmr(halo_masses, redshift=redshift, **sampled_params, **kwargs)
-            elif shmr_function == "behroozi2013":
-                stellar_masses = behroozi2013_shmr(halo_masses, redshift=redshift, **sampled_params, **kwargs)
+
             elif shmr_function == "moster2013":
                 stellar_masses = moster2013_shmr(halo_masses, redshift=redshift, **sampled_params, **kwargs)
             elif shmr_function == "rodriguez_puebla2017":
@@ -165,8 +164,7 @@ def calculate_shmr(
     if isinstance(shmr_function, str):
         if shmr_function == "behroozi2010":
             stellar_masses = behroozi2010_shmr(halo_masses, redshift=redshift, **parameters, **kwargs)
-        elif shmr_function == "behroozi2013":
-            stellar_masses = behroozi2013_shmr(halo_masses, redshift=redshift, **parameters, **kwargs)
+
         elif shmr_function == "moster2013":
             stellar_masses = moster2013_shmr(halo_masses, redshift=redshift, **parameters, **kwargs)
         elif shmr_function == "rodriguez_puebla2017":
@@ -422,44 +420,7 @@ def behroozi2010_shmr(
     return 10**logMstar
 
 
-def behroozi2013_shmr(
-    halo_mass: np.ndarray,
-    log_m1: float = 12.35,
-    ms0: float = 10.72,
-    beta: float = 0.44,
-    delta: float = 0.57,
-    gamma: float = 1.56
-) -> np.ndarray:
-    """
-    Calculate SHMR using Behroozi+ 2013 parametrization.
-    
-    Parameters:
-    -----------
-    halo_mass : array_like
-        Halo masses in solar masses
-    log_m1 : float
-        Characteristic halo mass (log10)
-    ms0 : float
-        Normalization (log10 stellar mass)
-    beta : float
-        Low-mass slope
-    delta : float
-        High-mass slope
-    gamma : float
-        Turnover sharpness
-        
-    Returns:
-    --------
-    np.ndarray
-        Stellar masses in solar masses
-    """
-    log_mh = np.log10(halo_mass)
-    x = log_mh - log_m1
-    
-    f = -np.log10(10**(beta * x) + 1) + delta * (np.log10(1 + np.exp(x)))**gamma / (1 + np.exp(10**(-x)))
-    
-    log_ms = ms0 + f
-    return 10**log_ms
+
 
 
 def moster2013_shmr(
