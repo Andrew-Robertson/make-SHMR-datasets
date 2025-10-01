@@ -17,9 +17,7 @@ from io import StringIO
 import os
 import tarfile
 import urllib.request
-
-# Add the src directory to Python path
-from shmr_datasets import (
+import sys
 
 # Add the src directory to Python path
 from shmr_datasets import (
@@ -131,7 +129,7 @@ def create_universemachine_shmr(sample="True_Cen", measurement="median_raw"):
     
     for i,z in enumerate(redshifts):
         # Define z_min and z_max for the interval
-        z_min = (redshifts[i - 1] + z) / 2 if i > 0 else max(0, z - 0.5*(redshifts[i + 1] - z))  # Calculate z_min based on spacing
+        z_min = (redshifts[i - 1] + z) / 2 if i > 0 else max(0.0, z - 0.5*(redshifts[i + 1] - z))  # Calculate z_min based on spacing
         z_max = (redshifts[i + 1] + z) / 2 if i < len(redshifts)-1 else z + 0.5*(z - redshifts[i - 1])  # Calculate z_max based on spacing
 
         interval_data = {
