@@ -52,16 +52,19 @@ def download_universemachine_data():
 
     url = "https://halos.as.arizona.edu/UniverseMachine/DR1/umachine-dr1.tar.gz"
     tarball = "umachine-dr1.tar.gz"
-    extract_dir = "../data/simulations/universemachine"
-    target_subdir = os.path.join(extract_dir, "umachine-dr1", "data", "smhm")
+    
+    # Use repository root to determine extract directory
+    repo_root = Path(__file__).parent.parent
+    extract_dir = repo_root / "data" / "simulations" / "universemachine"
+    target_subdir = extract_dir / "umachine-dr1" / "data" / "smhm"
 
-    if not os.path.exists(target_subdir):
+    if not target_subdir.exists():
         print("Downloading UniverseMachine SHMR data...")
         # Ensure destination directory exists
-        os.makedirs(extract_dir, exist_ok=True)
+        extract_dir.mkdir(parents=True, exist_ok=True)
 
         # Download tarball if not already present
-        if not os.path.exists(tarball):
+        if not Path(tarball).exists():
             print(f"Downloading {url} ...")
             urllib.request.urlretrieve(url, tarball)
 
@@ -74,7 +77,7 @@ def download_universemachine_data():
         print(f"Extracted {len(members)} files under {extract_dir}/umachine-dr1/data/smhm/")
 
         # Remove tarball to save space
-        os.remove(tarball)
+        Path(tarball).unlink()
         print(f"Deleted {tarball}")
     
     ##### /home/arobertson/Galacticus/make-SHMR-datasets/data/simulations/universemachine/umachine-dr1/data/smhm/params/gen_smhm_uncertainties.py is a script to create the SHMR and its uncertainty from a file describing the sample (which cotnains some parameters that were fit). Let;s use this. Though presumably not here. This should just be loading data, then the function below builds that SHMR files.
@@ -114,7 +117,7 @@ def create_universemachine_shmr(sample="True_Cen", measurement="median_raw"):
     # Load the scale factors and convert to redshifts
     scale_factors = []
     
-    umachine_data_dir = os.path.join(extract_dir, "umachine-dr1/data/smhm", measurement)
+    umachine_data_dir = extract_dir / "umachine-dr1" / "data" / "smhm" / measurement
     for filename in os.listdir(umachine_data_dir):
         if filename.startswith("smhm_a") and filename.endswith(".dat"):
             scale_factor = float(filename.split('_')[1].split('.d')[0][1:])
@@ -145,15 +148,15 @@ def create_universemachine_shmr(sample="True_Cen", measurement="median_raw"):
         print(f"Processing redshift interval {i+1}: z={interval_data['z_min']:.2f}-{interval_data['z_max']:.2f}")
         
         # Load corresponding smhm and smhm_scatter files
-        smhm_file = os.path.join(umachine_data_dir, f"smhm_a{1/(1+z):.6f}.dat")
-        smhm_scatter_file = os.path.join(umachine_data_dir, f"smhm_scatter_a{1/(1+z):.6f}.dat")
+        smhm_file = umachine_data_dir / f"smhm_a{1/(1+z):.6f}.dat"
+        smhm_scatter_file = umachine_data_dir / f"smhm_scatter_a{1/(1+z):.6f}.dat"
 
         if sample=="True_Cen":
             sample_column = 25 # these are listed in the header if we want to extend to other samples
         usecols = (0, sample_column, sample_column+1, sample_column+2) 
         
         # Read data from smhm file
-        if os.path.exists(smhm_file):
+        if smhm_file.exists():
             data = np.loadtxt(smhm_file, usecols=usecols, unpack=True)
             log10halo_mass, log10stellar_mass_ratio, err_plus_dex, err_minus_dex = data
             err_dex = (err_plus_dex + err_minus_dex) / 2 # symmetric error in dex
@@ -164,7 +167,7 @@ def create_universemachine_shmr(sample="True_Cen", measurement="median_raw"):
             print(f"Warning: {smhm_file} does not exist.")
             
         # Read data from smhm_scatter file
-        if os.path.exists(smhm_scatter_file):
+        if smhm_scatter_file.exists():
             scatter_data = np.loadtxt(smhm_scatter_file, usecols=usecols, unpack=True)
             _, scatter, scatter_err_plus, scatter_err_minus = scatter_data # already in dex as expected by Galacticus
             interval_data['stellar_scatter'].extend(scatter)
