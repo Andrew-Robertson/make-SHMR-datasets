@@ -1,26 +1,66 @@
 #!/usr/bin/env python3
 """
-Validation script for Galacticus-compatible SHMR datasets.
+Validation script for Galacticus-compatible SHMR and BHMR datasets.
 
-This script validates SHMR data files against the Galacticus format
-specification and reports any issues or warnings.
+This script validates stellar mass - halo mass relation (SHMR) and
+black hole mass - halo mass relation (BHMR) data files against the
+Galacticus format specification and reports any issues or warnings.
 """
 
 import sys
 import argparse
 from pathlib import Path
 
-from shmr_datasets import validate_galacticus_file, print_galacticus_file_info
+from shmr_datasets import (
+    validate_galacticus_file, 
+    print_galacticus_file_info,
+    validate_galacticus_bhmr_file,
+    print_galacticus_bhmr_file_info
+)
+import h5py
 
 
-def validate_file(filepath):
+def detect_file_type(filepath):
     """
-    Validate a single Galacticus SHMR file.
+    Detect whether a file is SHMR or BHMR based on its datasets.
     
     Parameters
     ----------
     filepath : Path
-        Path to the SHMR file to validate
+        Path to the file
+        
+    Returns
+    -------
+    str
+        'shmr' for stellar mass files, 'bhmr' for black hole mass files, or 'unknown'
+    """
+    try:
+        with h5py.File(filepath, 'r') as f:
+            # Find a redshift interval group
+            interval_groups = [name for name in f.keys() if name.startswith('redshiftInterval')]
+            if not interval_groups:
+                return 'unknown'
+            
+            # Check the first interval for dataset names
+            group = f[interval_groups[0]]
+            if 'massStellar' in group:
+                return 'shmr'
+            elif 'massBlackHole' in group:
+                return 'bhmr'
+            else:
+                return 'unknown'
+    except Exception:
+        return 'unknown'
+
+
+def validate_file(filepath):
+    """
+    Validate a single Galacticus SHMR or BHMR file.
+    
+    Parameters
+    ----------
+    filepath : Path
+        Path to the file to validate
         
     Returns
     -------
@@ -28,10 +68,22 @@ def validate_file(filepath):
         Validation results
     """
     try:
+        # Detect file type
+        file_type = detect_file_type(filepath)
+        
         print(f"Validating {filepath}...")
+        if file_type == 'shmr':
+            print("  Detected: Stellar Mass - Halo Mass Relation")
+        elif file_type == 'bhmr':
+            print("  Detected: Black Hole Mass - Halo Mass Relation")
+        else:
+            print("  Warning: Could not detect file type")
         
         # Validate the file format
-        results = validate_galacticus_file(filepath)
+        if file_type == 'bhmr':
+            results = validate_galacticus_bhmr_file(filepath)
+        else:
+            results = validate_galacticus_file(filepath)
         
         # Print results
         print(f"\nValidation Results for {filepath.name}")
@@ -58,7 +110,10 @@ def validate_file(filepath):
         if results["valid"]:
             print("\nFile Information:")
             print("-" * 30)
-            print_galacticus_file_info(filepath)
+            if file_type == 'bhmr':
+                print_galacticus_bhmr_file_info(filepath)
+            else:
+                print_galacticus_file_info(filepath)
         
         return results
         
@@ -126,12 +181,15 @@ def validate_directory(directory):
 def main():
     """Main validation function."""
     parser = argparse.ArgumentParser(
-        description="Validate SHMR datasets in Galacticus format",
+        description="Validate SHMR and BHMR datasets in Galacticus format",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Validate a single file
+  # Validate a single SHMR file
   python validate.py data/theory/behroozi2010/behroozi2010_parametric.hdf5
+  
+  # Validate a single BHMR file
+  python validate.py data/observations/trinity/trinity_bhmr.hdf5
   
   # Validate all files in a directory
   python validate.py data/
@@ -144,7 +202,7 @@ Examples:
     parser.add_argument(
         "path",
         type=Path,
-        help="Path to SHMR file or directory to validate"
+        help="Path to SHMR/BHMR file or directory to validate"
     )
     
     parser.add_argument(
