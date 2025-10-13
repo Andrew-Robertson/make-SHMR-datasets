@@ -24,12 +24,12 @@ from shmr_datasets import (
 
 
 def create_trinity_cosmology():
-    """Create cosmology consistent with TRINITY (Planck 2018)."""
+    """Create cosmology consistent with TRINITY (https://arxiv.org/pdf/2105.10474). Note that OmegaBaryon is not specified in the paper"""
     return GalacticusCosmology(
-        OmegaMatter=0.3111,      # Planck 2018
-        OmegaDarkEnergy=0.6889,  # 1 - Ω_M
-        OmegaBaryon=0.04897,     # Planck 2018 baryon density
-        HubbleConstant=67.66     # km/s/Mpc, Planck 2018
+        OmegaMatter=0.307,      
+        OmegaDarkEnergy=0.693,  
+        OmegaBaryon=0.049,     # Planck 2018 baryon density
+        HubbleConstant=67.80 
     )
 
 
@@ -251,7 +251,7 @@ def main():
     print("Creating TRINITY Black Hole Mass - Halo Mass Relation dataset...")
     print("=" * 70)
     print("Source: https://github.com/HaowenZhang/TRINITY")
-    print("Paper: Zhang et al. 2022, MNRAS, 518, 2123 (arXiv:2208.00719)")
+    print("Paper: Zhang et al. 2022, MNRAS, 518, 2123 (arXiv:2105.10474)")
     print()
     
     # Create the dataset
@@ -298,7 +298,7 @@ def main():
     print(f"- Repository: https://github.com/HaowenZhang/TRINITY")
     print(f"- Paper: Zhang et al. 2022, MNRAS, 518, 2123")
     print(f"- Method: Semi-empirical modeling of galaxy-halo-black hole connection")
-    print(f"- Cosmology: Planck 2018")
+    print(f"- Cosmology: Planck 2016")
     print(f"\nData processing notes:")
     print(f"- Black hole masses: Median values from TRINITY model")
     print(f"- BH mass errors: Half the 16th-84th percentile range from TRINITY")

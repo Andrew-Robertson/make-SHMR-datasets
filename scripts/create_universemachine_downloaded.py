@@ -29,12 +29,12 @@ from shmr_datasets import (
 
 
 def create_universemachine_cosmology():
-    """Create cosmology consistent with UniverseMachine (Planck 2018)."""
+    """Create cosmology consistent with UniverseMachine (https://arxiv.org/abs/1806.07893). Note that OmegaBaryon is not specified in the paper"""
     return GalacticusCosmology(
-        OmegaMatter=0.3089,      # Planck 2018
-        OmegaDarkEnergy=0.6911,  # 1 - Ω_M
-        OmegaBaryon=0.0486,      # Planck 2018 baryon density
-        HubbleConstant=67.74     # km/s/Mpc, Planck 2018
+        OmegaMatter=0.307, 
+        OmegaDarkEnergy=0.693,
+        OmegaBaryon=0.049,      # Planck 2018 baryon density
+        HubbleConstant=67.8
     )
 
 
@@ -250,7 +250,7 @@ def main():
     print(f"- Repository: https://bitbucket.org/pbehroozi/universemachine/")
     print(f"- Paper: Behroozi et al. 2019, MNRAS, 488, 3143")
     print(f"- Method: Empirical modeling of galaxy-halo connection")
-    print(f"- Cosmology: Planck 2018")
+    print(f"- Cosmology: Planck 2016")
 
 
 if __name__ == "__main__":
