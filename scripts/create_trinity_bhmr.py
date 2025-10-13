@@ -3,7 +3,7 @@
 Script to create TRINITY black hole mass - halo mass relation dataset in Galacticus format.
 
 This script creates a BHMR dataset using data from the TRINITY project:
-Zhang et al. 2022, MNRAS, 518, 2123 (arXiv:2208.00719)
+Zhang et al. 2022, MNRAS, 518, 2123 (arXiv:2105.10474)
 https://github.com/HaowenZhang/TRINITY
 
 This demonstrates creating datasets for black hole - halo mass relations.
