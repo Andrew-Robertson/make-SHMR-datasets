@@ -239,7 +239,8 @@ def create_trinity_bhmr():
         cosmology=create_trinity_cosmology(),
         haloMassDefinition="virial",  # TRINITY uses virial masses (peak halo mass)
         label="TRINITY",
-        reference="Zhang et al. (2022)"
+        reference="Zhang et al. (2022)",
+        notes="Zhang et al. (2022) do not advocate for the massBlackHoleScatter and massBlackHoleScatterError values that are listed in this file, which we arbitrarily set to 0.3 +/- 0.2 dex"
     )
     
     return bhmr_dataset

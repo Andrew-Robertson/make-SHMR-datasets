@@ -220,12 +220,15 @@ class GalacticusBHMRData:
         Space-free label for the dataset (e.g., "TRINITY")
     reference : str
         Reference citation for figures (e.g., "Zhang et al. (2022)")
+    notes : str, optional
+        Additional notes about the dataset (e.g., caveats, assumptions)
     """
     redshift_intervals: List[BlackHoleRedshiftInterval]
     cosmology: GalacticusCosmology
     haloMassDefinition: str
     label: str
     reference: str
+    notes: Optional[str] = None
     
     def __post_init__(self):
         """Validate data after initialization."""

@@ -334,6 +334,10 @@ def save_galacticus_bhmr(data: GalacticusBHMRData, filepath: Union[str, Path]) -
         f.attrs['label'] = data.label
         f.attrs['reference'] = data.reference
         
+        # Add optional notes attribute if provided
+        if data.notes is not None:
+            f.attrs['notes'] = data.notes
+        
         # Create cosmology group
         cosmo_group = f.create_group('cosmology')
         cosmo_group.attrs['OmegaMatter'] = data.cosmology.OmegaMatter
@@ -406,6 +410,13 @@ def load_galacticus_bhmr(filepath: Union[str, Path]) -> GalacticusBHMRData:
         if isinstance(reference, bytes):
             reference = reference.decode('utf-8')
         
+        # Read optional notes attribute
+        notes = None
+        if 'notes' in f.attrs:
+            notes = f.attrs['notes']
+            if isinstance(notes, bytes):
+                notes = notes.decode('utf-8')
+        
         # Read cosmology
         cosmo_group = f['cosmology']
         cosmology = GalacticusCosmology(
@@ -448,7 +459,8 @@ def load_galacticus_bhmr(filepath: Union[str, Path]) -> GalacticusBHMRData:
             cosmology=cosmology,
             haloMassDefinition=haloMassDefinition,
             label=label,
-            reference=reference
+            reference=reference,
+            notes=notes
         )
 
 
@@ -570,6 +582,9 @@ def print_galacticus_bhmr_file_info(filepath: Union[str, Path]) -> None:
         print(f"Number of redshift intervals: {data.n_redshift_intervals}")
         print(f"Total data points: {data.total_data_points}")
         print(f"Redshift range: {data.redshift_range[0]:.3f} - {data.redshift_range[1]:.3f}")
+        
+        if data.notes:
+            print(f"\nNotes: {data.notes}")
         
         print("\nCosmology:")
         print(f"  Ω_M = {data.cosmology.OmegaMatter:.4f}")
