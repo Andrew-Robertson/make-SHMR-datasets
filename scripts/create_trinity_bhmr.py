@@ -13,6 +13,7 @@ import numpy as np
 import sys
 from pathlib import Path
 from collections import defaultdict
+import urllib.request
 
 from shmr_datasets import (
     save_galacticus_bhmr,
@@ -32,9 +33,81 @@ def create_trinity_cosmology():
     )
 
 
+def download_trinity_data(output_path):
+    """
+    Download TRINITY data from GitHub repository.
+    
+    Parameters
+    ----------
+    output_path : Path
+        Path where to save the downloaded data
+        
+    Returns
+    -------
+    Path
+        Path to the downloaded file
+    """
+    url = "https://raw.githubusercontent.com/HaowenZhang/TRINITY/main/plot_data/Paper1/fig14_median_BHHM_z%3D0-10/fig14_median_BHHM_fit_z%3D0-10.dat"
+    
+    print(f"Downloading TRINITY data from: {url}")
+    
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    try:
+        urllib.request.urlretrieve(url, output_path)
+        print(f"Successfully downloaded to: {output_path}")
+        return output_path
+    except Exception as e:
+        raise RuntimeError(f"Failed to download TRINITY data: {e}")
+
+
+def calculate_redshift_bins(redshifts):
+    """
+    Calculate redshift bin edges from discrete redshift values.
+    
+    For each redshift z, the bin covers the range where z is the closest output.
+    E.g., for z=0.1, 1.0, 2.0, bins would be [0, 0.55], [0.55, 1.5], [1.5, ...]
+    
+    Parameters
+    ----------
+    redshifts : np.ndarray
+        Array of unique redshift values
+        
+    Returns
+    -------
+    dict
+        Dictionary mapping redshift to (z_min, z_max) tuple
+    """
+    z_sorted = np.sort(redshifts)
+    z_bins = {}
+    
+    for i, z in enumerate(z_sorted):
+        if i == 0:
+            # First bin starts at 0
+            z_min = 0.0
+            z_max = (z + z_sorted[i+1]) / 2.0 if i+1 < len(z_sorted) else z + 0.5
+        elif i == len(z_sorted) - 1:
+            # Last bin extends beyond
+            z_min = (z_sorted[i-1] + z) / 2.0
+            z_max = z + 0.5
+        else:
+            # Middle bins
+            z_min = (z_sorted[i-1] + z) / 2.0
+            z_max = (z + z_sorted[i+1]) / 2.0
+        
+        z_bins[z] = (z_min, z_max)
+    
+    return z_bins
+
+
 def load_trinity_data(filepath):
     """
     Load TRINITY black hole - halo mass relation data from file.
+    
+    The TRINITY data format has columns:
+    z, log10(Mpeak)[Msun], log10(Mbh_median)[Msun], 
+    log10(16-th percentile), log10(84-th percentile)
     
     Parameters
     ----------
@@ -52,33 +125,53 @@ def load_trinity_data(filepath):
         raise FileNotFoundError(f"TRINITY data file not found: {filepath}")
     
     # Read data file
+    # Columns: z, log10(Mpeak[Msun]), log10(Mbh_median)[Msun], log10(16th percentile), log10(84th percentile)
     data = np.loadtxt(filepath, comments='#')
     
-    # Columns: z_min, z_max, log10(Mpeak[Msun]), log10(Mbh[Msun]), log10(Mbh/Mpeak), sigma_log10_Mbh
-    z_min = data[:, 0]
-    z_max = data[:, 1]
-    log_halo_mass = data[:, 2]
-    log_bh_mass = data[:, 3]
-    sigma_log_bh = data[:, 5]
+    z = data[:, 0]
+    log_halo_mass = data[:, 1]
+    log_bh_mass = data[:, 2]
+    log_bh_mass_16 = data[:, 3]
+    log_bh_mass_84 = data[:, 4]
+    
+    # Get unique redshifts and calculate bin edges
+    unique_z = np.unique(z)
+    z_bins = calculate_redshift_bins(unique_z)
+    
+    print(f"\nRedshift bins calculated:")
+    for z_val in sorted(z_bins.keys()):
+        z_min, z_max = z_bins[z_val]
+        print(f"  z={z_val:.1f}: [{z_min:.2f}, {z_max:.2f}]")
     
     # Convert log masses to linear masses
     halo_mass = 10**log_halo_mass
     bh_mass = 10**log_bh_mass
     
+    # Calculate error from 16th-84th percentile range (half the range)
+    log_bh_mass_error = 0.5 * (log_bh_mass_84 - log_bh_mass_16)
+    bh_mass_error = bh_mass * np.log(10) * log_bh_mass_error
+    
     # Group data by redshift interval
-    redshift_data = defaultdict(lambda: {'halo_masses': [], 'bh_masses': [], 'sigma': []})
+    redshift_data = defaultdict(lambda: {
+        'halo_masses': [], 
+        'bh_masses': [], 
+        'bh_mass_errors': []
+    })
     
     for i in range(len(data)):
-        key = (z_min[i], z_max[i])
+        z_val = z[i]
+        z_min, z_max = z_bins[z_val]
+        key = (z_min, z_max)
+        
         redshift_data[key]['halo_masses'].append(halo_mass[i])
         redshift_data[key]['bh_masses'].append(bh_mass[i])
-        redshift_data[key]['sigma'].append(sigma_log_bh[i])
+        redshift_data[key]['bh_mass_errors'].append(bh_mass_error[i])
     
     # Convert lists to arrays
     for key in redshift_data:
         redshift_data[key]['halo_masses'] = np.array(redshift_data[key]['halo_masses'])
         redshift_data[key]['bh_masses'] = np.array(redshift_data[key]['bh_masses'])
-        redshift_data[key]['sigma'] = np.array(redshift_data[key]['sigma'])
+        redshift_data[key]['bh_mass_errors'] = np.array(redshift_data[key]['bh_mass_errors'])
     
     return redshift_data
 
@@ -93,11 +186,17 @@ def create_trinity_bhmr():
     The model includes multiple redshift intervals from z=0 to z=10.
     """
     
-    # Load TRINITY data
+    # Download or load TRINITY data
     data_dir = Path(__file__).parent.parent / "data" / "observations" / "trinity"
-    data_file = data_dir / "fig14_median_BHHM_fit_z0-10.txt"
+    data_file = data_dir / "fig14_median_BHHM_fit_z0-10.dat"
     
-    print(f"Loading TRINITY data from: {data_file}")
+    # Download if not present
+    if not data_file.exists():
+        print("TRINITY data not found locally. Downloading...")
+        data_file = download_trinity_data(data_file)
+    else:
+        print(f"Using existing TRINITY data: {data_file}")
+    
     redshift_data = load_trinity_data(data_file)
     
     # Create redshift intervals
@@ -109,22 +208,24 @@ def create_trinity_bhmr():
     for i, (z_min, z_max) in enumerate(sorted_keys):
         data = redshift_data[(z_min, z_max)]
         
-        print(f"Creating redshift interval {i+1}: z={z_min:.1f}-{z_max:.1f}, "
+        print(f"Creating redshift interval {i+1}: z={z_min:.2f}-{z_max:.2f}, "
               f"{len(data['halo_masses'])} points")
         
-        # For TRINITY, we assume:
-        # - Error in black hole mass is ~0.3 dex (typical uncertainty)
-        # - Scatter is provided in the data
-        # - Error in scatter is ~0.1 dex (typical)
+        # Note: TRINITY data does not include scatter information
+        # We use assumed values as per discussion:
+        # - Scatter: 0.3 dex (typical for black hole-halo mass relations)
+        # - Scatter error: 0.2 dex (uncertainty in scatter measurement)
+        # - BH mass error: from 16th-84th percentile range in data
         
-        bh_mass_error = 0.3 * np.log(10) * data['bh_masses']  # Convert dex to linear
-        scatter_error = np.full_like(data['sigma'], 0.1)  # 0.1 dex uncertainty in scatter
+        n_points = len(data['halo_masses'])
+        scatter = np.full(n_points, 0.3)  # Assumed scatter: 0.3 dex
+        scatter_error = np.full(n_points, 0.2)  # Assumed scatter error: 0.2 dex
         
         interval = BlackHoleRedshiftInterval(
             massHalo=data['halo_masses'],
             massBlackHole=data['bh_masses'],
-            massBlackHoleError=bh_mass_error,
-            massBlackHoleScatter=data['sigma'],
+            massBlackHoleError=data['bh_mass_errors'],
+            massBlackHoleScatter=scatter,
             massBlackHoleScatterError=scatter_error,
             redshiftMinimum=z_min,
             redshiftMaximum=z_max
@@ -197,7 +298,12 @@ def main():
     print(f"- Paper: Zhang et al. 2022, MNRAS, 518, 2123")
     print(f"- Method: Semi-empirical modeling of galaxy-halo-black hole connection")
     print(f"- Cosmology: Planck 2018")
-    print(f"- Note: This uses the median black hole mass - peak halo mass relation")
+    print(f"\nData processing notes:")
+    print(f"- Black hole masses: Median values from TRINITY model")
+    print(f"- BH mass errors: Half the 16th-84th percentile range from TRINITY")
+    print(f"- Scatter: Assumed value of 0.3 dex (TRINITY does not provide scatter)")
+    print(f"- Scatter error: Assumed value of 0.2 dex")
+    print(f"- Redshift bins: Calculated to cover ranges where each z is closest output")
 
 
 if __name__ == "__main__":
