@@ -1,16 +1,17 @@
 # SHMR Datasets Repository
 
-A repository for storing and managing stellar mass - halo mass relations (SHMRs) in the exact format required by [Galacticus](https://github.com/galacticusorg/galacticus), with complete data provenance and quality assurance.
+A repository for storing and managing stellar mass - halo mass relations (SHMRs) and black hole mass - halo mass relations (BHMRs) in the exact format required by [Galacticus](https://github.com/galacticusorg/galacticus), with complete data provenance and quality assurance.
 
 ## Overview
 
 This repository provides a standardized framework for:
 
-- **Galacticus Compatibility**: Data stored in the exact HDF5 format expected by Galacticus's `stellarHaloMassRelation` analysis class
+- **Galacticus Compatibility**: Data stored in the exact HDF5 format expected by Galacticus's `stellarHaloMassRelation` and `blackHoleVsHaloMassRelation` analysis classes
 - **Data Provenance**: Complete documentation of data sources, processing methods, and limitations  
 - **Reproducibility**: Scripts and notebooks documenting how datasets were created or downloaded
 - **Validation**: Tools to ensure data quality and format compliance
 - **Integration**: Direct usage with Galacticus simulations and other astrophysical codes
+- **Black Hole Relations**: Support for black hole mass - halo mass relations in addition to stellar mass relations
 
 ## Galacticus Format Specification
 
@@ -105,14 +106,21 @@ save_galacticus_shmr(calculated_shmr, "my_shmr.hdf5")
 
 Once you have a properly formatted HDF5 file, you can use it directly in Galacticus:
 
+**For stellar mass - halo mass relations:**
 ```xml
 <stellarHaloMassRelation value="file">
   <fileName value="path/to/your/shmr_file.hdf5"/>
 </stellarHaloMassRelation>
 ```
 
-Galacticus will automatically read the cosmology, halo mass definition, and redshift intervals, applying appropriate conversions as needed.
+**For black hole mass - halo mass relations:**
+```xml
+<blackHoleVsHaloMassRelation value="file">
+  <fileNameTarget value="path/to/your/bhmr_file.hdf5"/>
+</blackHoleVsHaloMassRelation>
 ```
+
+Galacticus will automatically read the cosmology, halo mass definition, and redshift intervals, applying appropriate conversions as needed.
 
 ### Validation
 
@@ -143,10 +151,15 @@ The package includes implementations of several common SHMR parametrizations:
 
 The repository includes validated example datasets:
 
-- **Behroozi et al. 2010**: `data/theory/behroozi2010/behroozi2010_parametric.hdf5` (parametric model)
+### Stellar Mass - Halo Mass Relations
 
+- **Behroozi et al. 2010**: `data/theory/behroozi2010/behroozi2010_parametric.hdf5` (parametric model)
 - **Moster et al. 2013**: `data/theory/moster2013/moster2013_z0_galacticus.hdf5`
 - **UniverseMachine**: `data/simulations/universemachine/universemachine_downloaded.hdf5` (downloaded data)
+
+### Black Hole Mass - Halo Mass Relations
+
+- **TRINITY**: `data/observations/trinity/trinity_bhmr.hdf5` (semi-empirical model from Zhang et al. 2022, z=0-10)
 
 All datasets pass Galacticus format validation and can be used directly in simulations.
 

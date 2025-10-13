@@ -12,6 +12,8 @@ from .data_format import (
     GalacticusSHMRData, 
     RedshiftInterval, 
     GalacticusCosmology,
+    GalacticusBHMRData,
+    BlackHoleRedshiftInterval,
     create_example_cosmology,
     validate_halo_mass_definition
 )
@@ -19,7 +21,11 @@ from .io import (
     load_galacticus_shmr, 
     save_galacticus_shmr, 
     validate_galacticus_file,
-    print_galacticus_file_info
+    print_galacticus_file_info,
+    load_galacticus_bhmr,
+    save_galacticus_bhmr,
+    validate_galacticus_bhmr_file,
+    print_galacticus_bhmr_file_info
 )
 from .utils import calculate_shmr, interpolate_shmr
 
@@ -27,12 +33,18 @@ __all__ = [
     "GalacticusSHMRData",
     "RedshiftInterval", 
     "GalacticusCosmology",
+    "GalacticusBHMRData",
+    "BlackHoleRedshiftInterval",
     "create_example_cosmology",
     "validate_halo_mass_definition",
     "load_galacticus_shmr",
     "save_galacticus_shmr",
     "validate_galacticus_file", 
     "print_galacticus_file_info",
+    "load_galacticus_bhmr",
+    "save_galacticus_bhmr",
+    "validate_galacticus_bhmr_file",
+    "print_galacticus_bhmr_file_info",
     "calculate_shmr",
     "interpolate_shmr"
 ]
