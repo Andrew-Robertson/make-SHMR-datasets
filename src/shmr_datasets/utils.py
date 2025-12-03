@@ -696,3 +696,66 @@ def calculate_stellar_mass_function(
                 )
     
     return 10**mass_centers, number_density
+
+def speagle14_log_sfr_ms(log10_Mstar, t_gyr=None, z=None, cosmology=None):
+    """
+    Speagle+ (2014) star-forming main sequence (SFMS) meta-fit.
+    
+    This function implements equation (28) from Speagle et al. 2014:
+    log SFR = (0.84 - 0.026*t) * log M* - (6.51 - 0.11*t)
+    where t is the age of the Universe in Gyr.
+
+    Parameters
+    ----------
+    log10_Mstar : array_like
+        log10 stellar mass [M_sun].
+    t_gyr : float or array_like, optional
+        Age of the Universe at the galaxy redshift [Gyr]. Provide this OR `z`.
+    z : float or array_like, optional
+        Redshift(s). If given, `t_gyr` is computed from the provided `cosmology` (or Planck18).
+    cosmology : astropy.cosmology instance or GalacticusCosmology, optional
+        Used only if `z` is provided. If GalacticusCosmology, converts to astropy.
+        Defaults to Planck18 if available.
+
+    Returns
+    -------
+    log10_SFR_ms : ndarray
+        log10 SFR on the main sequence [M_sun/yr].
+        
+    References
+    ----------
+    Speagle et al. 2014, ApJS, 214, 15 (arXiv:1405.2041)
+    """
+    from .data_format import GalacticusCosmology
+    
+    log10_Mstar = np.asanyarray(log10_Mstar, dtype=float)
+
+    if t_gyr is None:
+        if z is None:
+            raise ValueError("Provide either t_gyr or z.")
+        
+        # Import astropy cosmology
+        try:
+            from astropy.cosmology import FlatLambdaCDM, Planck18
+            
+            # Convert GalacticusCosmology to astropy cosmology if needed
+            if isinstance(cosmology, GalacticusCosmology):
+                cosmology = FlatLambdaCDM(
+                    H0=cosmology.HubbleConstant,
+                    Om0=cosmology.OmegaMatter,
+                    Ob0=cosmology.OmegaBaryon
+                )
+            elif cosmology is None:
+                cosmology = Planck18
+        except ImportError:
+            raise ImportError("astropy not available. Provide `t_gyr` directly or install astropy.")
+        
+        # Vectorized age of the Universe in Gyr
+        t_gyr = np.asanyarray(cosmology.age(np.asanyarray(z)).value, dtype=float)
+    else:
+        t_gyr = np.asanyarray(t_gyr, dtype=float)
+
+    # Speagle+14: log SFR = (0.84 - 0.026 t) * log M* - (6.51 - 0.11 t), with t in Gyr.
+    a = 0.84 - 0.026 * t_gyr
+    b = -(6.51 - 0.11 * t_gyr)
+    return a * log10_Mstar + b
