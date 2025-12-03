@@ -693,7 +693,7 @@ def load_galacticus_mass_size(filepath: Union[str, Path]) -> 'GalacticusMassSize
     GalacticusMassSizeData
         The loaded mass-size relation data
     """
-    from .data_format import GalacticusMassSizeData, MassSizeSample
+    from .data_format import GalacticusMassSizeData, MassSizeSample, GalacticusCosmology
     
     filepath = Path(filepath)
     

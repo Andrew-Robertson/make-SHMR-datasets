@@ -24,6 +24,15 @@ from shmr_datasets import (
 )
 from shmr_datasets.utils import speagle14_log_sfr_ms
 
+# Default scatter values from literature
+# These are typical values for the intrinsic scatter in the mass-size relation
+DEFAULT_RADIUS_SCATTER_DEX = 0.15  # Intrinsic scatter in dex
+DEFAULT_RADIUS_SCATTER_ERROR_DEX = 0.03  # Uncertainty in scatter measurement
+
+# Main sequence offset for quiescent classification
+# Galaxies below this offset from the main sequence are considered quiescent
+DEFAULT_MAIN_SEQUENCE_OFFSET_DEX = 0.4  # 0.4 dex below main sequence
+
 
 def create_vanderwel2014_cosmology():
     """Create cosmology consistent with van der Wel et al. 2014."""
@@ -167,10 +176,6 @@ def create_vanderwel2014_mass_size():
     
     samples = []
     
-    # Main sequence offset for quiescent classification
-    # Following common practice: 0.3-0.5 dex below main sequence
-    offset_ms = 0.4  # dex
-    
     # Process each redshift bin
     for i_z, (z_min, z_max) in enumerate(data['redshift_bins']):
         z_center = (z_min + z_max) / 2
@@ -191,16 +196,17 @@ def create_vanderwel2014_mass_size():
             Re_late_kpc = 10**late_Re[valid_late]
             Re_late_mpc = Re_late_kpc * 1e-3  # kpc to Mpc
             
-            # Error propagation: dR = R * ln(10) * d(log R)
+            # Error propagation from logarithmic to linear space:
+            # For R = 10^(log R), the error is: dR = R * ln(10) * d(log R)
             Re_late_err_mpc = Re_late_mpc * np.log(10) * late_Re_err[valid_late]
             
             # Calculate main sequence SFR at these masses using Speagle+14
             log_sfr_ms = speagle14_log_sfr_ms(log_mass_late, z=z_center, cosmology=cosmology)
             sfr_ms = 10**log_sfr_ms
             
-            # Scatter and scatter error (typical values from literature)
-            Re_scatter = np.full(len(mass_stellar_late), 0.15)  # 0.15 dex scatter
-            Re_scatter_err = np.full(len(mass_stellar_late), 0.03)
+            # Use default scatter values from module constants
+            Re_scatter = np.full(len(mass_stellar_late), DEFAULT_RADIUS_SCATTER_DEX)
+            Re_scatter_err = np.full(len(mass_stellar_late), DEFAULT_RADIUS_SCATTER_ERROR_DEX)
             
             sample_sf = MassSizeSample(
                 massStellar=mass_stellar_late,
@@ -212,7 +218,7 @@ def create_vanderwel2014_mass_size():
                 redshiftMaximum=z_max,
                 selection='star forming',
                 mainSequenceSFR=sfr_ms,
-                offsetMainSequenceSFR=offset_ms
+                offsetMainSequenceSFR=DEFAULT_MAIN_SEQUENCE_OFFSET_DEX
             )
             samples.append(sample_sf)
         
@@ -226,16 +232,17 @@ def create_vanderwel2014_mass_size():
             Re_early_kpc = 10**early_Re[valid_early]
             Re_early_mpc = Re_early_kpc * 1e-3
             
-            # Error propagation
+            # Error propagation from logarithmic to linear space:
+            # For R = 10^(log R), the error is: dR = R * ln(10) * d(log R)
             Re_early_err_mpc = Re_early_mpc * np.log(10) * early_Re_err[valid_early]
             
             # Calculate main sequence SFR (even for quiescent, as reference)
             log_sfr_ms = speagle14_log_sfr_ms(log_mass_early, z=z_center, cosmology=cosmology)
             sfr_ms = 10**log_sfr_ms
             
-            # Scatter
-            Re_scatter = np.full(len(mass_stellar_early), 0.15)
-            Re_scatter_err = np.full(len(mass_stellar_early), 0.03)
+            # Use default scatter values from module constants
+            Re_scatter = np.full(len(mass_stellar_early), DEFAULT_RADIUS_SCATTER_DEX)
+            Re_scatter_err = np.full(len(mass_stellar_early), DEFAULT_RADIUS_SCATTER_ERROR_DEX)
             
             sample_q = MassSizeSample(
                 massStellar=mass_stellar_early,
@@ -247,7 +254,7 @@ def create_vanderwel2014_mass_size():
                 redshiftMaximum=z_max,
                 selection='quiescent',
                 mainSequenceSFR=sfr_ms,
-                offsetMainSequenceSFR=offset_ms
+                offsetMainSequenceSFR=DEFAULT_MAIN_SEQUENCE_OFFSET_DEX
             )
             samples.append(sample_q)
     
