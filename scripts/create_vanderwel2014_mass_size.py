@@ -245,11 +245,11 @@ def create_vanderwel2014_mass_size():
         notes=(
             "Mass-size relations from van der Wel et al. 2014 (ApJ, 788, 28). "
             "Data extracted from Table 2, which provides log(Re/kpc) at different stellar masses and redshifts. "
-            "22 samples: 11 redshift bins (z=0.25-3.0) × 2 selections (star forming + quiescent). "
+            "12 samples: 6 redshift bins (z=0-3) × 2 selections (star forming + quiescent). "
+            "The errors on mean sizes and scatter are not taken from the paper, but instead just use default values."
+            "Cosmology: WMAP7 (though I could not find a statement of what they used/assumed in the paper)."
             "Star forming main sequence uses Speagle et al. 2014 parametrization. "
             f"Quiescent classification: {DEFAULT_MAIN_SEQUENCE_OFFSET_DEX} dex below main sequence. "
-            f"Intrinsic scatter: {DEFAULT_RADIUS_SCATTER_DEX} dex. "
-            "Cosmology: WMAP7 (consistent with original paper)."
         )
     )
 
