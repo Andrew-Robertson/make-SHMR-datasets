@@ -631,6 +631,12 @@ def save_galacticus_mass_size(data: 'GalacticusMassSizeData', filepath: Union[st
         if data.notes is not None:
             f.attrs['notes'] = data.notes
         
+        # Add optional creator and creation date attributes if provided
+        if data.creator is not None:
+            f.attrs['creator'] = data.creator
+        if data.creationDate is not None:
+            f.attrs['creationDate'] = data.creationDate
+        
         # Create cosmology group
         cosmo_group = f.create_group('cosmology')
         cosmo_group.attrs['OmegaMatter'] = data.cosmology.OmegaMatter
@@ -721,6 +727,20 @@ def load_galacticus_mass_size(filepath: Union[str, Path]) -> 'GalacticusMassSize
             if isinstance(notes, bytes):
                 notes = notes.decode('utf-8')
         
+        # Read optional creator attribute
+        creator = None
+        if 'creator' in f.attrs:
+            creator = f.attrs['creator']
+            if isinstance(creator, bytes):
+                creator = creator.decode('utf-8')
+        
+        # Read optional creationDate attribute
+        creationDate = None
+        if 'creationDate' in f.attrs:
+            creationDate = f.attrs['creationDate']
+            if isinstance(creationDate, bytes):
+                creationDate = creationDate.decode('utf-8')
+        
         # Read cosmology
         cosmo_group = f['cosmology']
         cosmology = GalacticusCosmology(
@@ -776,7 +796,9 @@ def load_galacticus_mass_size(filepath: Union[str, Path]) -> 'GalacticusMassSize
             cosmology=cosmology,
             label=label,
             reference=reference,
-            notes=notes
+            notes=notes,
+            creator=creator,
+            creationDate=creationDate
         )
 
 
@@ -906,6 +928,10 @@ def print_galacticus_mass_size_file_info(filepath: Union[str, Path]) -> None:
         print(f"Reference: {data.reference}")
         if data.notes:
             print(f"Notes: {data.notes}")
+        if data.creator:
+            print(f"Creator: {data.creator}")
+        if data.creationDate:
+            print(f"Creation Date: {data.creationDate}")
         print(f"Number of samples: {data.n_samples}")
         print(f"Total data points: {data.total_data_points}")
         print(f"Redshift range: {data.redshift_range[0]:.3f} - {data.redshift_range[1]:.3f}")

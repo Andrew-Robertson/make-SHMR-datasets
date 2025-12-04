@@ -434,12 +434,18 @@ class GalacticusMassSizeData:
         Reference citation for figures (e.g., "van der Wel et al. (2014)")
     notes : str, optional
         Additional notes about the dataset (e.g., data source, methods, caveats)
+    creator : str, optional
+        Name or identifier of the person/tool that created this file
+    creationDate : str, optional
+        Date when this file was created (recommended format: YYYY-MM-DD)
     """
     samples: List[MassSizeSample]
     cosmology: GalacticusCosmology
     label: str
     reference: str
     notes: Optional[str] = None
+    creator: Optional[str] = None
+    creationDate: Optional[str] = None
     
     def __post_init__(self):
         """Validate data after initialization."""

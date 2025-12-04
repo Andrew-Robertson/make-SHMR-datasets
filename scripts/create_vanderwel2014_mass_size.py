@@ -13,6 +13,7 @@ late-type (star forming) galaxies.
 import numpy as np
 import sys
 from pathlib import Path
+from datetime import datetime
 
 from shmr_datasets import (
     GalacticusMassSizeData,
@@ -237,6 +238,9 @@ def create_vanderwel2014_mass_size():
             )
             samples.append(sample_q)
 
+    # Get current date
+    creation_date = datetime.now().strftime("%Y-%m-%d")
+    
     return GalacticusMassSizeData(
         samples=samples,
         cosmology=cosmology,
@@ -250,7 +254,9 @@ def create_vanderwel2014_mass_size():
             "Cosmology: WMAP7 (though I could not find a statement of what they used/assumed in the paper)."
             "Star forming main sequence uses Speagle et al. 2014 parametrization. "
             f"Quiescent classification: {DEFAULT_MAIN_SEQUENCE_OFFSET_DEX} dex below main sequence. "
-        )
+        ),
+        creator="create_vanderwel2014_mass_size.py script",
+        creationDate=creation_date
     )
 
 
