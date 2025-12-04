@@ -28,10 +28,11 @@ from shmr_datasets.utils import speagle14_log_sfr_ms
 # These are typical values for the intrinsic scatter in the mass-size relation
 DEFAULT_RADIUS_SCATTER_DEX = 0.15  # Intrinsic scatter in dex
 DEFAULT_RADIUS_SCATTER_ERROR_DEX = 0.03  # Uncertainty in scatter measurement
+DEFAULT_RADIUS_ERROR_DEX = 0.01
 
 # Main sequence offset for quiescent classification
 # Galaxies below this offset from the main sequence are considered quiescent
-DEFAULT_MAIN_SEQUENCE_OFFSET_DEX = 0.4  # 0.4 dex below main sequence
+DEFAULT_MAIN_SEQUENCE_OFFSET_DEX = 1.0  # 1.0 dex below main sequence
 
 
 def create_vanderwel2014_cosmology():
@@ -65,100 +66,82 @@ def parse_vanderwel2014_data():
     """
     # Redshift bins from Table 2
     redshift_bins = [
-        (0.25, 0.50),
-        (0.50, 0.75),
-        (0.75, 1.00),
-        (1.00, 1.25),
-        (1.25, 1.50),
-        (1.50, 1.75),
-        (1.75, 2.00),
-        (2.00, 2.25),
-        (2.25, 2.50),
-        (2.50, 2.75),
-        (2.75, 3.00)
+        (0.0, 0.5),
+        (0.5, 1.0),
+        (1.0, 1.5),
+        (1.5, 2.0),
+        (2.0, 2.5),
+        (2.5, 3.0),
     ]
     
     # Stellar mass bin centers (log10 M_sun)
-    mass_bins = np.array([9.75, 10.25, 10.75, 11.25])
+    mass_bins = np.array([9.25, 9.75, 10.25, 10.75, 11.25])
     
     # Data from Table 2: log(Re/kpc) for late-type (star forming) galaxies
-    # Format: [z_bin][mass_bin] = value ± error
-    # Using NaN for missing data
-    late_type_Re = np.array([
-        # z=0.25-0.50: 16%, 50%, 84% percentiles from paper
-        # Converting 16-84% range to effective radius and error
-        [0.24, 0.49, 0.61, np.nan],   # Derived from 16%/50%/84% percentiles
-        # z=0.50-0.75
-        [0.18, 0.43, 0.58, 0.70],
-        # z=0.75-1.00  
-        [0.18, 0.43, 0.57, 0.67],
-        # z=1.00-1.25
-        [0.11, 0.37, 0.48, 0.60],
-        # z=1.25-1.50
-        [0.07, 0.33, 0.45, 0.57],
-        # z=1.50-1.75
-        [0.07, 0.16, 0.42, 0.52],
-        # z=1.75-2.00
-        [np.nan, 0.10, 0.35, 0.44],
-        # z=2.00-2.25
-        [np.nan, 0.10, 0.26, 0.40],
-        # z=2.25-2.50
-        [np.nan, np.nan, 0.17, 0.33],
-        # z=2.50-2.75
-        [np.nan, np.nan, 0.16, 0.26],
-        # z=2.75-3.00
-        [np.nan, np.nan, 0.19, 0.33]
+    # Data for late-type (star forming) galaxies, using NaN for missing data
+
+    late_type_Re_16 = np.array([
+        [0.24, 0.36, 0.42, 0.61, np.nan], 
+        [0.18, 0.32, 0.39, 0.51, 0.77],
+        [0.11, 0.23, 0.33, 0.47, 0.62],
+        [0.07, 0.16, 0.28, 0.35, 0.53],
+        [np.nan, 0.10, 0.17, 0.26, 0.40],
+        [np.nan, np.nan, 0.16, 0.19, 0.33],
     ])
-    
-    # Uncertainties in log(Re/kpc) for late-type
-    late_type_Re_err = np.array([
-        [0.01, 0.01, 0.03, np.nan],
-        [0.01, 0.01, 0.01, 0.01],
-        [0.01, 0.01, 0.01, 0.01],
-        [0.01, 0.01, 0.01, 0.01],
-        [0.01, 0.01, 0.01, 0.01],
-        [0.01, 0.01, 0.01, 0.01],
-        [np.nan, 0.01, 0.01, 0.01],
-        [np.nan, 0.01, 0.02, 0.02],
-        [np.nan, np.nan, 0.02, 0.01],
-        [np.nan, np.nan, 0.02, 0.03],
-        [np.nan, np.nan, 0.06, 0.04]
+
+    late_type_Re_50 = np.array([
+        [0.49, 0.61, 0.66, 0.83, np.nan], 
+        [0.43, 0.56, 0.64, 0.75, 0.90],
+        [0.37, 0.48, 0.57, 0.67, 0.82],
+        [0.33, 0.42, 0.52, 0.61, 0.70],
+        [np.nan, 0.35, 0.44, 0.53, 0.64],
+        [np.nan, np.nan, 0.43, 0.47, 0.55],
     ])
+
+    late_type_Re_84 = np.array([
+        [0.70, 0.80, 0.85, 1.01, np.nan], 
+        [0.65, 0.76, 0.83, 0.90, 1.12],
+        [0.60, 0.69, 0.77, 0.83, 0.96],
+        [0.57, 0.65, 0.72, 0.80, 0.87],
+        [np.nan, 0.57, 0.64, 0.70, 0.84],
+        [np.nan, np.nan, 0.65, 0.71, 0.76],
+    ])
+
     
     # Data for early-type (quiescent) galaxies  
-    early_type_Re = np.array([
-        [0.03, 0.36, 0.42, 0.65],
-        [-0.02, 0.27, 0.38, 0.62],
-        [-0.02, 0.23, 0.32, 0.51],
-        [0.02, 0.21, 0.26, 0.45],
-        [-0.27, 0.02, 0.19, 0.37],
-        [-0.27, -0.02, 0.13, 0.28],
-        [np.nan, -0.04, 0.02, 0.16],
-        [np.nan, -0.27, 0.02, 0.10],
-        [np.nan, np.nan, -0.04, 0.08],
-        [np.nan, np.nan, -0.37, 0.07],
-        [np.nan, np.nan, np.nan, -0.04]
+
+    early_type_Re_16 = np.array([
+        [0.03, 0.04, 0.13, 0.42, 0.65], 
+        [-0.02, -0.14, 0.02, 0.26, 0.62],
+        [np.nan, -0.15, -0.15, 0.07, 0.41 ],
+        [np.nan, -0.02, -0.27, -0.04, 0.28],
+        [np.nan, np.nan, -0.37, -0.20, 0.16],
+        [np.nan, np.nan, np.nan, -0.22, 0.07],
     ])
-    
-    early_type_Re_err = np.array([
-        [0.06, 0.02, 0.02, 0.05],
-        [0.03, 0.02, 0.01, 0.02],
-        [0.02, 0.02, 0.01, 0.02],
-        [0.06, 0.03, 0.02, 0.02],
-        [0.02, 0.03, 0.03, 0.03],
-        [0.02, 0.06, 0.02, 0.02],
-        [np.nan, 0.06, 0.03, 0.03],
-        [np.nan, 0.02, 0.03, 0.01],
-        [np.nan, np.nan, 0.08, 0.03],
-        [np.nan, np.nan, 0.02, 0.07],
-        [np.nan, np.nan, np.nan, 0.02]
+
+    early_type_Re_50 = np.array([
+        [0.27, 0.28, 0.38, 0.67, 0.76], 
+        [0.23, 0.21, 0.23, 0.45, 0.81],
+        [np.nan, 0.18, 0.09, 0.30, 0.58],
+        [np.nan, 0.22, 0.02, 0.19, 0.45],
+        [np.nan, np.nan, -0.04, 0.08, 0.36],
+        [np.nan, np.nan, np.nan, 0.10, 0.39],
     ])
-    
+
+    early_type_Re_84 = np.array([
+        [0.46, 0.46, 0.58, 0.92, 1.08], 
+        [0.43, 0.44, 0.42, 0.64, 0.97],
+        [np.nan, 0.42, 0.36, 0.54, 0.81],
+        [np.nan, 0.48, 0.35, 0.50, 0.74],
+        [np.nan, np.nan,0.36, 0.54, 0.55],
+        [np.nan, np.nan, np.nan, 0.50, 0.68],
+    ])
+
     return {
         'redshift_bins': redshift_bins,
         'mass_bins': mass_bins,
-        'late_type': {'Re': late_type_Re, 'Re_err': late_type_Re_err},
-        'early_type': {'Re': early_type_Re, 'Re_err': early_type_Re_err}
+        'late_type': {'Re': late_type_Re_50, 'Re_scatt': 0.5*(late_type_Re_84-late_type_Re_16)},
+        'early_type': {'Re': early_type_Re_50, 'Re_scatt': 0.5*(early_type_Re_84-early_type_Re_16)},
     }
 
 
@@ -182,9 +165,9 @@ def create_vanderwel2014_mass_size():
         
         # Get valid data for this redshift bin (both star forming and quiescent)
         late_Re = data['late_type']['Re'][i_z]
-        late_Re_err = data['late_type']['Re_err'][i_z]
+        late_Re_scatter = data['late_type']['Re_scatt'][i_z]
         early_Re = data['early_type']['Re'][i_z]
-        early_Re_err = data['early_type']['Re_err'][i_z]
+        early_Re_scatter = data['early_type']['Re_scatt'][i_z]
         
         # Process star forming (late-type) sample
         valid_late = ~np.isnan(late_Re)
@@ -193,21 +176,19 @@ def create_vanderwel2014_mass_size():
             log_mass_late = data['mass_bins'][valid_late]
             
             # Convert log(Re/kpc) to Re in Mpc
-            Re_late_kpc = 10**late_Re[valid_late]
-            Re_late_mpc = Re_late_kpc * 1e-3  # kpc to Mpc
+            Re_late_mpc = 10**late_Re[valid_late] * 1e-3  # log10(r/kpc) to r/Mpc
             
-            # Error propagation from logarithmic to linear space:
+            # Error propagation from logarithmic to linear space (using default relative error):
             # For R = 10^(log R), the error is: dR = R * ln(10) * d(log R)
-            Re_late_err_mpc = Re_late_mpc * np.log(10) * late_Re_err[valid_late]
+            Re_late_err_mpc = Re_late_mpc * np.log(10) * DEFAULT_RADIUS_ERROR_DEX 
             
             # Calculate main sequence SFR at these masses using Speagle+14
             log_sfr_ms = speagle14_log_sfr_ms(log_mass_late, z=z_center, cosmology=cosmology)
-            sfr_ms = 10**log_sfr_ms
             
             # Use default scatter values from module constants
-            Re_scatter = np.full(len(mass_stellar_late), DEFAULT_RADIUS_SCATTER_DEX)
+            Re_scatter = late_Re_scatter[valid_late]
             Re_scatter_err = np.full(len(mass_stellar_late), DEFAULT_RADIUS_SCATTER_ERROR_DEX)
-            
+       
             sample_sf = MassSizeSample(
                 massStellar=mass_stellar_late,
                 radiusEffective=Re_late_mpc,
@@ -217,7 +198,7 @@ def create_vanderwel2014_mass_size():
                 redshiftMinimum=z_min,
                 redshiftMaximum=z_max,
                 selection='star forming',
-                mainSequenceSFR=sfr_ms,
+                mainSequenceSFR=log_sfr_ms,
                 offsetMainSequenceSFR=DEFAULT_MAIN_SEQUENCE_OFFSET_DEX
             )
             samples.append(sample_sf)
@@ -229,19 +210,17 @@ def create_vanderwel2014_mass_size():
             log_mass_early = data['mass_bins'][valid_early]
             
             # Convert log(Re/kpc) to Re in Mpc
-            Re_early_kpc = 10**early_Re[valid_early]
-            Re_early_mpc = Re_early_kpc * 1e-3
+            Re_early_mpc = 10**early_Re[valid_early] * 1e-3
             
             # Error propagation from logarithmic to linear space:
             # For R = 10^(log R), the error is: dR = R * ln(10) * d(log R)
-            Re_early_err_mpc = Re_early_mpc * np.log(10) * early_Re_err[valid_early]
+            Re_early_err_mpc = Re_early_mpc * np.log(10) * DEFAULT_RADIUS_ERROR_DEX 
             
             # Calculate main sequence SFR (even for quiescent, as reference)
             log_sfr_ms = speagle14_log_sfr_ms(log_mass_early, z=z_center, cosmology=cosmology)
-            sfr_ms = 10**log_sfr_ms
             
             # Use default scatter values from module constants
-            Re_scatter = np.full(len(mass_stellar_early), DEFAULT_RADIUS_SCATTER_DEX)
+            Re_scatter = early_Re_scatter[valid_early]
             Re_scatter_err = np.full(len(mass_stellar_early), DEFAULT_RADIUS_SCATTER_ERROR_DEX)
             
             sample_q = MassSizeSample(
@@ -253,11 +232,11 @@ def create_vanderwel2014_mass_size():
                 redshiftMinimum=z_min,
                 redshiftMaximum=z_max,
                 selection='quiescent',
-                mainSequenceSFR=sfr_ms,
+                mainSequenceSFR=log_sfr_ms,
                 offsetMainSequenceSFR=DEFAULT_MAIN_SEQUENCE_OFFSET_DEX
             )
             samples.append(sample_q)
-    
+
     return GalacticusMassSizeData(
         samples=samples,
         cosmology=cosmology,
