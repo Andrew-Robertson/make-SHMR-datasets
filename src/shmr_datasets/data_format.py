@@ -432,11 +432,14 @@ class GalacticusMassSizeData:
         Space-free label for the dataset (e.g., "vanDerWel2014")
     reference : str
         Reference citation for figures (e.g., "van der Wel et al. (2014)")
+    notes : str, optional
+        Additional notes about the dataset (e.g., data source, methods, caveats)
     """
     samples: List[MassSizeSample]
     cosmology: GalacticusCosmology
     label: str
     reference: str
+    notes: Optional[str] = None
     
     def __post_init__(self):
         """Validate data after initialization."""

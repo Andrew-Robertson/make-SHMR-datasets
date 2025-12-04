@@ -627,6 +627,10 @@ def save_galacticus_mass_size(data: 'GalacticusMassSizeData', filepath: Union[st
         f.attrs['label'] = data.label
         f.attrs['reference'] = data.reference
         
+        # Add optional notes attribute if provided
+        if data.notes is not None:
+            f.attrs['notes'] = data.notes
+        
         # Create cosmology group
         cosmo_group = f.create_group('cosmology')
         cosmo_group.attrs['OmegaMatter'] = data.cosmology.OmegaMatter
@@ -710,6 +714,13 @@ def load_galacticus_mass_size(filepath: Union[str, Path]) -> 'GalacticusMassSize
         if isinstance(reference, bytes):
             reference = reference.decode('utf-8')
         
+        # Read optional notes attribute
+        notes = None
+        if 'notes' in f.attrs:
+            notes = f.attrs['notes']
+            if isinstance(notes, bytes):
+                notes = notes.decode('utf-8')
+        
         # Read cosmology
         cosmo_group = f['cosmology']
         cosmology = GalacticusCosmology(
@@ -764,7 +775,8 @@ def load_galacticus_mass_size(filepath: Union[str, Path]) -> 'GalacticusMassSize
             samples=samples,
             cosmology=cosmology,
             label=label,
-            reference=reference
+            reference=reference,
+            notes=notes
         )
 
 
@@ -892,6 +904,8 @@ def print_galacticus_mass_size_file_info(filepath: Union[str, Path]) -> None:
         print(f"File: {filepath}")
         print(f"Label: {data.label}")
         print(f"Reference: {data.reference}")
+        if data.notes:
+            print(f"Notes: {data.notes}")
         print(f"Number of samples: {data.n_samples}")
         print(f"Total data points: {data.total_data_points}")
         print(f"Redshift range: {data.redshift_range[0]:.3f} - {data.redshift_range[1]:.3f}")
