@@ -285,8 +285,8 @@ DATASET_DESCRIPTIONS = {
     "massBlackHoleScatterError": "Uncertainty in intrinsic scatter",
     "radiusEffective": "Effective radius",
     "radiusEffectiveError": "Uncertainty in effective radius",
-    "radiusEffectiveScatter": "Intrinsic scatter in effective radius",
-    "radiusEffectiveScatterError": "Uncertainty in intrinsic scatter",
+    "radiusEffectiveScatter": "Relative scatter in effective radius (in dex)",
+    "radiusEffectiveScatterError": "Uncertainty in Relative scatter in effective radius (in dex)",
     "mainSequenceSFR": "Mean star formation rate on the main sequence"
 }
 
