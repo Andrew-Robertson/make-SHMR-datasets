@@ -1,17 +1,20 @@
 # SHMR Datasets Repository
 
-A repository for storing and managing stellar mass - halo mass relations (SHMRs) and black hole mass - halo mass relations (BHMRs) in the exact format required by [Galacticus](https://github.com/galacticusorg/galacticus), with complete data provenance and quality assurance.
+A repository for storing and managing stellar mass - halo mass relations (SHMRs), black hole mass - halo mass relations (BHMRs), and stellar mass-size relations in the exact format required by [Galacticus](https://github.com/galacticusorg/galacticus), with complete data provenance and quality assurance.
 
 ## Overview
 
 This repository provides a standardized framework for:
 
-- **Galacticus Compatibility**: Data stored in the exact HDF5 format expected by Galacticus's `stellarHaloMassRelation` and `blackHoleVsHaloMassRelation` analysis classes
+- **Galacticus Compatibility**: Data stored in the exact HDF5 format expected by Galacticus's analysis classes (`stellarHaloMassRelation`, `blackHoleVsHaloMassRelation`, and `stellarMassSizeRelation`)
 - **Data Provenance**: Complete documentation of data sources, processing methods, and limitations  
 - **Reproducibility**: Scripts and notebooks documenting how datasets were created or downloaded
 - **Validation**: Tools to ensure data quality and format compliance
 - **Integration**: Direct usage with Galacticus simulations and other astrophysical codes
-- **Black Hole Relations**: Support for black hole mass - halo mass relations in addition to stellar mass relations
+- **Multiple Relations**: Support for:
+  - Stellar mass - halo mass relations (SHMRs)
+  - Black hole mass - halo mass relations (BHMRs)
+  - Stellar mass - size relations
 
 ## Galacticus Format Specification
 
@@ -160,6 +163,10 @@ The repository includes validated example datasets:
 ### Black Hole Mass - Halo Mass Relations
 
 - **TRINITY**: `data/observations/trinity/trinity_bhmr.hdf5` (semi-empirical model from Zhang et al. 2022, z=0-10)
+
+### Stellar Mass - Size Relations
+
+- **van der Wel et al. 2014**: `data/observations/vanderwel2014/vanderwel2014_mass_size.hdf5` (mass-size relations for star forming and quiescent galaxies, z=0.25-3.0)
 
 All datasets pass Galacticus format validation and can be used directly in simulations.
 
