@@ -158,7 +158,8 @@ def create_vanderwel2014_mass_size():
     data = parse_vanderwel2014_data()
     cosmology = create_vanderwel2014_cosmology()
     
-    samples = []
+    samples_late_type = []
+    samples_early_type = []
     
     # Process each redshift bin
     for i_z, (z_min, z_max) in enumerate(data['redshift_bins']):
@@ -202,7 +203,7 @@ def create_vanderwel2014_mass_size():
                 mainSequenceSFR=log_sfr_ms,
                 offsetMainSequenceSFR=DEFAULT_MAIN_SEQUENCE_OFFSET_DEX
             )
-            samples.append(sample_sf)
+            samples_late_type.append(sample_sf)
         
         # Process quiescent (early-type) sample
         valid_early = ~np.isnan(early_Re)
@@ -236,7 +237,9 @@ def create_vanderwel2014_mass_size():
                 mainSequenceSFR=log_sfr_ms,
                 offsetMainSequenceSFR=DEFAULT_MAIN_SEQUENCE_OFFSET_DEX
             )
-            samples.append(sample_q)
+            samples_early_type.append(sample_q)
+
+    samples = samples_late_type + samples_early_type
 
     # Get current date
     creation_date = datetime.now().strftime("%Y-%m-%d")
@@ -255,7 +258,7 @@ def create_vanderwel2014_mass_size():
             "Star forming main sequence uses Speagle et al. 2014 parametrization. "
             f"Quiescent classification: {DEFAULT_MAIN_SEQUENCE_OFFSET_DEX} dex below main sequence. "
         ),
-        creator="create_vanderwel2014_mass_size.py script",
+        creator="Andrew Robertson with /home/arobertson/Galacticus/make-SHMR-datasets/scripts/create_vanderwel2014_mass_size.py script on Carnegie OBS HPC",
         creationDate=creation_date
     )
 
